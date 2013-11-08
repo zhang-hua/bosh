@@ -7,7 +7,7 @@ describe Bosh::Agent::Message::UnmountDisk do
 
     Bosh::Agent::Config.stub(:platform).and_return(platform)
     platform.stub(:lookup_disk_by_cid).and_return("/dev/sdy")
-    Bosh::Agent::DiskUtil.stub(:mount_entry).and_return('/dev/sdy1 /foomount fstype')
+    Bosh::Agent::DiskUtil.stub(:mount_entry).and_return('/dev/sdy1 on /foomount type fstype')
 
     handler = Bosh::Agent::Message::UnmountDisk.new
     Bosh::Agent::DiskUtil.stub(:umount_guard)
@@ -21,7 +21,7 @@ describe Bosh::Agent::Message::UnmountDisk do
 
     Bosh::Agent::Config.stub(:platform).and_return(platform)
     platform.stub(:lookup_disk_by_cid).and_return("/dev/sdy")
-    Bosh::Agent::DiskUtil.stub(:mount_entry).and_return('/dev/sdy /foomount fstype')
+    Bosh::Agent::DiskUtil.stub(:mount_entry).and_return('/dev/sdy on /foomount type fstype')
 
     handler = Bosh::Agent::Message::UnmountDisk.new
     Bosh::Agent::DiskUtil.stub(:umount_guard)
