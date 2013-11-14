@@ -79,12 +79,16 @@ module Bat
       info['cpi'] == 'openstack'
     end
 
+    def warden?
+      info['cpi'] == 'warden'
+    end
+
     def compiled_package_cache?
       info['features'] && info['features']['compiled_package_cache']
     end
 
     def dns?
-      info['features'] && info['features']['dns']
+      info['features'] && info['features']['dns']['status']
     end
 
     def bosh_tld
