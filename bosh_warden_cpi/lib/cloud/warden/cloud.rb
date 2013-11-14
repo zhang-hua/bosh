@@ -66,10 +66,9 @@ module Bosh::WardenCloud
     # @param [optional, Hash] env environment that will be passed to this vm
     # @return [String] vm_id
     def create_vm(agent_id, stemcell_id, resource_pool,
-                  networks, disk_locality = nil, env = nil)
+                  networks, disk_locality = nil, environment = nil)
       not_used(resource_pool)
       not_used(disk_locality)
-      not_used(env)
 
       vm_handle = nil
       with_thread_name("create_vm(#{agent_id}, #{stemcell_id}, #{networks})") do
@@ -94,7 +93,7 @@ module Bosh::WardenCloud
         cloud_error("Cannot create vm with given handle #{vm_id}") unless vm_handle == vm_id
 
         # Agent settings
-        env = generate_agent_env(vm_id, agent_id, networks)
+        env = generate_agent_env(vm_id, agent_id, networks, environment)
         set_agent_env(vm_id, env)
         start_agent(vm_id)
         vm_id

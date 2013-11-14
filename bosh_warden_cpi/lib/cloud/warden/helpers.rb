@@ -42,7 +42,7 @@ module Bosh::WardenCloud
       DEFAULT_SETTINGS_FILE
     end
 
-    def generate_agent_env(vm_id, agent_id, networks)
+    def generate_agent_env(vm_id, agent_id, networks, environment)
       vm_env = {
           'name' => vm_id,
           'id' => vm_id
@@ -54,6 +54,7 @@ module Bosh::WardenCloud
           'networks' => networks,
           'disks' => { 'persistent' => {} },
       }
+      env['env'] = environment if environment
       env.merge!(@agent_properties)
       env
     end

@@ -43,11 +43,12 @@ describe Bosh::WardenCloud::Helpers do
     end
 
     it 'generate agent env from agent_properties' do
-      env = generate_agent_env('vm-id', 'agent-id', {})
+      env = generate_agent_env('vm-id', 'agent-id', {}, { 'password' => 'abc' })
       env['vm']['name'].should == 'vm-id'
       env['vm']['id'].should == 'vm-id'
       env['agent_id'].should == 'agent-id'
       env['ntp'].should == 'test'
+      env['env']['password'].should == 'abc'
     end
 
     it 'invoke warden to cat agent_settings_file' do
