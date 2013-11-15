@@ -92,7 +92,10 @@ describe 'with release and stemcell and two deployments' do
       end
 
       it 'should migrate disk contents', ssh: true do
-        persistent_disk(static_ip).should_not eq(@size)
+        # Warden df don't work so skip the persistent disk size check
+        unless warden?
+          persistent_disk(static_ip).should_not eq(@size)
+        end
         ssh(static_ip, 'vcap', "cat #{SAVE_FILE}", @our_ssh_options).should match /foobar/
       end
 
