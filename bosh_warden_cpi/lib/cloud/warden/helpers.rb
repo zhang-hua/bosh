@@ -74,7 +74,6 @@ module Bosh::WardenCloud
     def set_agent_env(handle, env)
       tempfile = Tempfile.new('settings')
       tempfile.write(Yajl::Encoder.encode(env))
-      tempfile.close
       tempfile_in = "/tmp/#{Kernel.rand(100_000)}"
       # Here we copy the setting file to temp file in container, then mv it to
       # /var/vcap/bosh by privileged user.
@@ -91,6 +90,7 @@ module Bosh::WardenCloud
         request.script = "mv #{tempfile_in} #{agent_settings_file}"
         client.call(request)
       end
+      tempfile.close
       tempfile.unlink
     end
 
