@@ -24,13 +24,17 @@ namespace :ci do
     build.upload_release(Bosh::Dev::MicroBoshRelease.new)
   end
 
-  desc 'Build a stemcell for the given :infrastructure, and :operating_system and copy to ./tmp/'
-  task :build_stemcell, [:infrastructure_name, :operating_system_name, :agent_name] do |_, args|
+  def build_stemcell(infrastructure_name, operating_system_name, agent_name)
     require 'bosh/dev/stemcell_builder'
 
     stemcell_builder = Bosh::Dev::StemcellBuilder.for_candidate_build(
-      args.infrastructure_name, args.operating_system_name, args.agent_name)
-    stemcell_file = stemcell_builder.build_stemcell
+      infrastructure_name, operating_system_name, agent_name)
+    stemcell_builder.build_stemcell
+  end
+
+  desc 'Build a stemcell for the given :infrastructure, and :operating_system and copy to ./tmp/'
+  task :build_dev_stemcell, [:infrastructure_name, :operating_system_name, :agent_name] do |_, args|
+    stemcell_file = build_stemcell(args.infrastructure_name, args.operating_system_name, args.agent_name)
 
     mkdir_p('tmp')
     cp(stemcell_file, File.join('tmp', File.basename(stemcell_file)))
@@ -39,12 +43,9 @@ namespace :ci do
   desc 'Build a stemcell for the given :infrastructure, and :operating_system and publish to S3'
   task :publish_stemcell, [:infrastructure_name, :operating_system_name, :agent_name] do |_, args|
     require 'bosh/dev/build'
-    require 'bosh/dev/stemcell_builder'
     require 'bosh/dev/stemcell_publisher'
 
-    stemcell_builder = Bosh::Dev::StemcellBuilder.for_candidate_build(
-      args.infrastructure_name, args.operating_system_name, args.agent_name)
-    stemcell_file = stemcell_builder.build_stemcell
+    stemcell_file = build_stemcell(args.infrastructure_name, args.operating_system_name, args.agent_name)
 
     stemcell_publisher = Bosh::Dev::StemcellPublisher.for_candidate_build
     stemcell_publisher.publish(stemcell_file)
