@@ -24,6 +24,16 @@ namespace :ci do
     build.upload_release(Bosh::Dev::MicroBoshRelease.new)
   end
 
+  def build_light_stemcell(stemcell_filename)
+    stemcell = Bosh::Stemcell::Archive.new(stemcell_filename)
+    light_stemcell = Bosh::Stemcell::Aws::LightStemcell.new(stemcell)
+    light_stemcell.write_archive
+  end
+
+  task :build_light_stemcell, [:stemcell_path] do |_,args|
+    build_light_stemcell(args.stemcell_path)
+  end
+
   def build_stemcell(infrastructure_name, operating_system_name, agent_name)
     require 'bosh/dev/stemcell_builder'
 
@@ -33,7 +43,7 @@ namespace :ci do
   end
 
   desc 'Build a stemcell for the given :infrastructure, and :operating_system and copy to ./tmp/'
-  task :build_dev_stemcell, [:infrastructure_name, :operating_system_name, :agent_name] do |_, args|
+  task :build_stemcell, [:infrastructure_name, :operating_system_name, :agent_name] do |_, args|
     stemcell_file = build_stemcell(args.infrastructure_name, args.operating_system_name, args.agent_name)
 
     mkdir_p('tmp')
