@@ -31,6 +31,7 @@ namespace :ci do
   end
 
   task :build_light_stemcell, [:stemcell_path] do |_,args|
+    require 'bosh/stemcell/aws/light_stemcell'
     build_light_stemcell(args.stemcell_path)
   end
 
