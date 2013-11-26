@@ -1,4 +1,5 @@
 require 'yajl'
+require 'bosh/dev/sandbox/main'
 
 module IntegrationExampleGroup
   def deploy_simple(options={})
@@ -41,11 +42,10 @@ module IntegrationExampleGroup
     failure_expected = options.fetch(:failure_expected, false)
     work_dir = options.fetch(:work_dir, BOSH_WORK_DIR)
     Dir.chdir(work_dir) do
-      command = "bosh -n -c #{BOSH_CONFIG} -C #{BOSH_CACHE_DIR} #{cmd}"
+      command = "bosh -n -c #{BOSH_CONFIG} #{cmd}"
       output = `#{command} 2>&1`
       if $?.exitstatus != 0 && !failure_expected
-        puts command
-        puts output
+        raise "ERROR: #{command} failed with #{output}"
       end
       output
     end
@@ -53,7 +53,7 @@ module IntegrationExampleGroup
 
   def run_bosh_cck_ignore_errors(num_errors)
     resolution_selections = "1\n"*num_errors + "yes"
-    output = `echo "#{resolution_selections}" | bosh -c #{BOSH_CONFIG} -C #{BOSH_CACHE_DIR} cloudcheck`
+    output = `echo "#{resolution_selections}" | bosh -c #{BOSH_CONFIG} cloudcheck`
     if $?.exitstatus != 0
       puts output
     end
@@ -61,7 +61,7 @@ module IntegrationExampleGroup
   end
 
   def current_sandbox
-    @current_sandbox = Thread.current[:sandbox] || Bosh::Spec::Sandbox.new
+    @current_sandbox = Thread.current[:sandbox] || Bosh::Dev::Sandbox::Main.new
     Thread.current[:sandbox] = @current_sandbox
   end
 
@@ -73,8 +73,9 @@ module IntegrationExampleGroup
     out.gsub(/^\s*/, '').gsub(/\s*$/, '')
   end
 
+  # forcefully suppress raising on error...caller beware
   def expect_output(cmd, expected_output)
-    format_output(run_bosh(cmd)).should == format_output(expected_output)
+    format_output(run_bosh(cmd, :failure_expected => true)).should == format_output(expected_output)
   end
 
   def get_vms

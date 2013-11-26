@@ -1,7 +1,7 @@
 package infrastructure
 
 import (
-	"bosh/settings"
+	boshsettings "bosh/settings"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestAwsGetPublicKey(t *testing.T) {
+func TestAwsSetupSsh(t *testing.T) {
 	expectedKey := "some public key"
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -25,9 +25,13 @@ func TestAwsGetPublicKey(t *testing.T) {
 
 	aws := newAwsInfrastructure(ts.URL, &FakeDnsResolver{})
 
-	key, err := aws.GetPublicKey()
+	fakeSshSetupDelegate := &FakeSshSetupDelegate{}
+
+	err := aws.SetupSsh(fakeSshSetupDelegate, "vcap")
 	assert.NoError(t, err)
-	assert.Equal(t, key, expectedKey)
+
+	assert.Equal(t, fakeSshSetupDelegate.SetupSshPublicKey, expectedKey)
+	assert.Equal(t, fakeSshSetupDelegate.SetupSshUsername, "vcap")
 }
 
 func TestAwsGetSettingsWhenADnsIsNotProvided(t *testing.T) {
@@ -41,9 +45,9 @@ func TestAwsGetSettingsWhenADnsIsNotProvided(t *testing.T) {
 
 	aws := newAwsInfrastructure(metadataTs.URL, &FakeDnsResolver{})
 
-	s, err := aws.GetSettings()
+	settings, err := aws.GetSettings()
 	assert.NoError(t, err)
-	assert.Equal(t, s, expectedSettings)
+	assert.Equal(t, settings, expectedSettings)
 }
 
 func TestAwsGetSettingsWhenDnsServersAreProvided(t *testing.T) {
@@ -70,9 +74,9 @@ func TestAwsGetSettingsWhenDnsServersAreProvided(t *testing.T) {
 
 	aws := newAwsInfrastructure(metadataTs.URL, fakeDnsResolver)
 
-	s, err := aws.GetSettings()
+	settings, err := aws.GetSettings()
 	assert.NoError(t, err)
-	assert.Equal(t, s, expectedSettings)
+	assert.Equal(t, settings, expectedSettings)
 	assert.Equal(t, fakeDnsResolver.LookupHostHost, "the.registry.name")
 	assert.Equal(t, fakeDnsResolver.LookupHostDnsServers, []string{"8.8.8.8", "9.9.9.9"})
 }
@@ -81,20 +85,33 @@ func TestAwsSetupNetworking(t *testing.T) {
 	fakeDnsResolver := &FakeDnsResolver{}
 	aws := newAwsInfrastructure("", fakeDnsResolver)
 	fakeDelegate := &FakeNetworkingDelegate{}
-	networks := settings.Networks{"bosh": settings.NetworkSettings{}}
+	networks := boshsettings.Networks{"bosh": boshsettings.NetworkSettings{}}
 
 	aws.SetupNetworking(fakeDelegate, networks)
 
 	assert.Equal(t, fakeDelegate.SetupDhcpNetworks, networks)
 }
 
+// Fake Ssh Setup Delegate
+
+type FakeSshSetupDelegate struct {
+	SetupSshPublicKey string
+	SetupSshUsername  string
+}
+
+func (d *FakeSshSetupDelegate) SetupSsh(publicKey, username string) (err error) {
+	d.SetupSshPublicKey = publicKey
+	d.SetupSshUsername = username
+	return
+}
+
 // Fake Networking Delegate
 
 type FakeNetworkingDelegate struct {
-	SetupDhcpNetworks settings.Networks
+	SetupDhcpNetworks boshsettings.Networks
 }
 
-func (d *FakeNetworkingDelegate) SetupDhcp(networks settings.Networks) (err error) {
+func (d *FakeNetworkingDelegate) SetupDhcp(networks boshsettings.Networks) (err error) {
 	d.SetupDhcpNetworks = networks
 	return
 }
@@ -116,12 +133,34 @@ func (res *FakeDnsResolver) LookupHost(dnsServers []string, host string) (ip str
 
 // Server methods
 
-func spinUpAwsRegistry(t *testing.T) (ts *httptest.Server, port string, expectedSettings settings.Settings) {
+func spinUpAwsRegistry(t *testing.T) (ts *httptest.Server, port string, expectedSettings boshsettings.Settings) {
 	settingsJson := `{
 		"agent_id": "my-agent-id",
+		"blobstore": {
+			"options": {
+				"bucket_name": "george",
+				"encryption_key": "optional encryption key",
+				"access_key_id": "optional access key id",
+				"secret_access_key": "optional secret access key"
+			},
+			"provider": "s3"
+		},
+		"disks": {
+			"ephemeral": "/dev/sdb",
+			"persistent": {
+				"vol-xxxxxx": "/dev/sdf"
+			},
+			"system": "/dev/sda1"
+		},
+		"env": {
+			"bosh": {
+				"password": "some encrypted password"
+			}
+		},
 		"networks": {
 			"netA": {
 				"default": ["dns", "gateway"],
+				"ip": "ww.ww.ww.ww",
 				"dns": [
 					"xx.xx.xx.xx",
 					"yy.yy.yy.yy"
@@ -132,6 +171,14 @@ func spinUpAwsRegistry(t *testing.T) (ts *httptest.Server, port string, expected
 					"zz.zz.zz.zz"
 				]
 			}
+		},
+		"mbus": "https://vcap:b00tstrap@0.0.0.0:6868",
+		"ntp": [
+			"0.north-america.pool.ntp.org",
+			"1.north-america.pool.ntp.org"
+		],
+		"vm": {
+			"name": "vm-abc-def"
 		}
 	}`
 	settingsJson = strings.Replace(settingsJson, `"`, `\"`, -1)
@@ -140,16 +187,44 @@ func spinUpAwsRegistry(t *testing.T) (ts *httptest.Server, port string, expected
 
 	settingsJson = fmt.Sprintf(`{"settings": "%s"}`, settingsJson)
 
-	expectedSettings = settings.Settings{
+	expectedSettings = boshsettings.Settings{
 		AgentId: "my-agent-id",
-		Networks: settings.Networks{
-			"netA": settings.NetworkSettings{
+		Blobstore: boshsettings.Blobstore{
+			Options: map[string]string{
+				"bucket_name":       "george",
+				"encryption_key":    "optional encryption key",
+				"access_key_id":     "optional access key id",
+				"secret_access_key": "optional secret access key",
+			},
+			Type: boshsettings.BlobstoreTypeS3,
+		},
+		Disks: boshsettings.Disks{
+			Ephemeral:  "/dev/sdb",
+			Persistent: map[string]string{"vol-xxxxxx": "/dev/sdf"},
+			System:     "/dev/sda1",
+		},
+		Env: boshsettings.Env{
+			Bosh: boshsettings.BoshEnv{
+				Password: "some encrypted password",
+			},
+		},
+		Networks: boshsettings.Networks{
+			"netA": boshsettings.NetworkSettings{
 				Default: []string{"dns", "gateway"},
+				Ip:      "ww.ww.ww.ww",
 				Dns:     []string{"xx.xx.xx.xx", "yy.yy.yy.yy"},
 			},
-			"netB": settings.NetworkSettings{
+			"netB": boshsettings.NetworkSettings{
 				Dns: []string{"zz.zz.zz.zz"},
 			},
+		},
+		Mbus: "https://vcap:b00tstrap@0.0.0.0:6868",
+		Ntp: []string{
+			"0.north-america.pool.ntp.org",
+			"1.north-america.pool.ntp.org",
+		},
+		Vm: boshsettings.Vm{
+			Name: "vm-abc-def",
 		},
 	}
 

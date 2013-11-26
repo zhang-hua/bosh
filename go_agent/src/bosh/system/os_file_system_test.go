@@ -10,7 +10,7 @@ import (
 )
 
 func TestHomeDir(t *testing.T) {
-	osFs := OsFileSystem{}
+	osFs := NewOsFileSystem()
 
 	homeDir, err := osFs.HomeDir("root")
 	assert.NoError(t, err)
@@ -18,10 +18,10 @@ func TestHomeDir(t *testing.T) {
 }
 
 func TestMkdirAll(t *testing.T) {
-	osFs := OsFileSystem{}
+	osFs := NewOsFileSystem()
 	tmpPath := os.TempDir()
-	testPath := filepath.Join(tmpPath, "foo", "bar", "baz")
-	defer os.RemoveAll(filepath.Join(tmpPath, "foo"))
+	testPath := filepath.Join(tmpPath, "MkdirAllTestDir", "bar", "baz")
+	defer os.RemoveAll(filepath.Join(tmpPath, "MkdirAllTestDir"))
 
 	_, err := os.Stat(testPath)
 	assert.Error(t, err)
@@ -39,8 +39,8 @@ func TestMkdirAll(t *testing.T) {
 }
 
 func TestChown(t *testing.T) {
-	osFs := OsFileSystem{}
-	testPath := filepath.Join(os.TempDir(), "foo")
+	osFs := NewOsFileSystem()
+	testPath := filepath.Join(os.TempDir(), "ChownTestDir")
 
 	err := os.Mkdir(testPath, os.FileMode(0700))
 	assert.NoError(t, err)
@@ -52,8 +52,8 @@ func TestChown(t *testing.T) {
 }
 
 func TestChmod(t *testing.T) {
-	osFs := OsFileSystem{}
-	testPath := filepath.Join(os.TempDir(), "foo")
+	osFs := NewOsFileSystem()
+	testPath := filepath.Join(os.TempDir(), "ChmodTestDir")
 
 	_, err := os.Create(testPath)
 	assert.NoError(t, err)
@@ -70,14 +70,15 @@ func TestChmod(t *testing.T) {
 }
 
 func TestWriteToFile(t *testing.T) {
-	osFs := OsFileSystem{}
-	testPath := filepath.Join(os.TempDir(), "foo")
+	osFs := NewOsFileSystem()
+	testPath := filepath.Join(os.TempDir(), "WriteToFileTestFile")
 
 	_, err := os.Stat(testPath)
 	assert.Error(t, err)
 
-	err = osFs.WriteToFile(testPath, "initial write")
+	written, err := osFs.WriteToFile(testPath, "initial write")
 	assert.NoError(t, err)
+	assert.True(t, written)
 	defer os.Remove(testPath)
 
 	file, err := os.Open(testPath)
@@ -86,14 +87,123 @@ func TestWriteToFile(t *testing.T) {
 
 	assert.Equal(t, readFile(file), "initial write")
 
-	err = osFs.WriteToFile(testPath, "second write")
+	written, err = osFs.WriteToFile(testPath, "second write")
 	assert.NoError(t, err)
+	assert.True(t, written)
 
 	file.Close()
 	file, err = os.Open(testPath)
 	assert.NoError(t, err)
 
 	assert.Equal(t, readFile(file), "second write")
+
+	file.Close()
+	file, err = os.Open(testPath)
+
+	written, err = osFs.WriteToFile(testPath, "second write")
+	assert.NoError(t, err)
+	assert.False(t, written)
+	assert.Equal(t, readFile(file), "second write")
+}
+
+func TestReadFile(t *testing.T) {
+	osFs := NewOsFileSystem()
+	testPath := filepath.Join(os.TempDir(), "ReadFileTestFile")
+
+	osFs.WriteToFile(testPath, "some contents")
+	defer os.Remove(testPath)
+
+	content, err := osFs.ReadFile(testPath)
+	assert.NoError(t, err)
+	assert.Equal(t, "some contents", content)
+}
+
+func TestFileExists(t *testing.T) {
+	osFs := NewOsFileSystem()
+	testPath := filepath.Join(os.TempDir(), "FileExistsTestFile")
+
+	assert.False(t, osFs.FileExists(testPath))
+
+	osFs.WriteToFile(testPath, "initial write")
+	defer os.Remove(testPath)
+
+	assert.True(t, osFs.FileExists(testPath))
+}
+
+func TestSymlink(t *testing.T) {
+	osFs := NewOsFileSystem()
+	filePath := filepath.Join(os.TempDir(), "SymlinkTestFile")
+	symlinkPath := filepath.Join(os.TempDir(), "SymlinkTestSymlink")
+
+	osFs.WriteToFile(filePath, "some content")
+	defer os.Remove(filePath)
+
+	osFs.Symlink(filePath, symlinkPath)
+	defer os.Remove(symlinkPath)
+
+	symlinkStats, err := os.Lstat(symlinkPath)
+	assert.NoError(t, err)
+	assert.Equal(t, os.ModeSymlink, os.ModeSymlink&symlinkStats.Mode())
+
+	symlinkFile, err := os.Open(symlinkPath)
+	assert.NoError(t, err)
+	assert.Equal(t, "some content", readFile(symlinkFile))
+}
+
+func TestSymlinkWhenLinkAlreadyExistsAndLinksToTheIntendedPath(t *testing.T) {
+	osFs := NewOsFileSystem()
+	filePath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1File")
+	symlinkPath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1Symlink")
+
+	osFs.WriteToFile(filePath, "some content")
+	defer os.Remove(filePath)
+
+	osFs.Symlink(filePath, symlinkPath)
+	defer os.Remove(symlinkPath)
+
+	firstSymlinkStats, err := os.Lstat(symlinkPath)
+	assert.NoError(t, err)
+
+	err = osFs.Symlink(filePath, symlinkPath)
+	assert.NoError(t, err)
+
+	secondSymlinkStats, err := os.Lstat(symlinkPath)
+	assert.NoError(t, err)
+	assert.Equal(t, firstSymlinkStats.ModTime(), secondSymlinkStats.ModTime())
+}
+
+func TestSymlinkWhenLinkAlreadyExistsAndDoesNotLinkToTheIntendedPath(t *testing.T) {
+	osFs := NewOsFileSystem()
+	filePath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1File")
+	otherFilePath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1OtherFile")
+	symlinkPath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1Symlink")
+
+	osFs.WriteToFile(filePath, "some content")
+	defer os.Remove(filePath)
+
+	osFs.WriteToFile(otherFilePath, "other content")
+	defer os.Remove(otherFilePath)
+
+	osFs.Symlink(otherFilePath, symlinkPath)
+	defer os.Remove(symlinkPath)
+
+	err := osFs.Symlink(filePath, symlinkPath)
+	assert.Error(t, err)
+}
+
+func TestSymlinkWhenAFileExistsAtIntendedPath(t *testing.T) {
+	osFs := NewOsFileSystem()
+	filePath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1File")
+	symlinkPath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1Symlink")
+
+	osFs.WriteToFile(filePath, "some content")
+	defer os.Remove(filePath)
+
+	osFs.WriteToFile(symlinkPath, "some other content")
+	defer os.Remove(symlinkPath)
+
+	err := osFs.Symlink(filePath, symlinkPath)
+	assert.Error(t, err)
 }
 
 func readFile(file *os.File) string {

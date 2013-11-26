@@ -1,8 +1,63 @@
 package settings
 
+const (
+	ROOT_USERNAME         = "root"
+	VCAP_USERNAME         = "vcap"
+	VCAP_BASE_DIR         = "/var/vcap"
+	ADMIN_GROUP           = "admin"
+	EPHEMERAL_USER_PREFIX = "bosh_"
+)
+
 type Settings struct {
-	AgentId  string   `json:"agent_id"`
-	Networks Networks `json:"networks"`
+	AgentId   string `json:"agent_id"`
+	Blobstore Blobstore
+	Disks     Disks
+	Env       Env
+	Networks  Networks
+	Ntp       []string
+	Mbus      string
+	Vm        Vm
+}
+
+type BlobstoreType string
+
+const (
+	BlobstoreTypeS3    BlobstoreType = "s3"
+	BlobstoreTypeDummy               = "dummy"
+)
+
+type Blobstore struct {
+	Type    BlobstoreType `json:"provider"`
+	Options map[string]string
+}
+
+type Disks struct {
+	System     string
+	Ephemeral  string
+	Persistent map[string]string
+}
+
+type Vm struct {
+	Name string `json:"name"`
+}
+
+func (d Disks) PersistentDiskPath() (path string) {
+	for _, path = range d.Persistent {
+		return
+	}
+	return
+}
+
+type Env struct {
+	Bosh BoshEnv `json:"bosh"`
+}
+
+func (e Env) GetPassword() string {
+	return e.Bosh.Password
+}
+
+type BoshEnv struct {
+	Password string
 }
 
 type Networks map[string]NetworkSettings
@@ -10,6 +65,7 @@ type Networks map[string]NetworkSettings
 type NetworkSettings struct {
 	Default []string
 	Dns     []string
+	Ip      string
 }
 
 func (n Networks) DefaultNetworkFor(category string) (settings NetworkSettings, found bool) {
@@ -33,6 +89,22 @@ func (n Networks) DefaultNetworkFor(category string) (settings NetworkSettings, 
 		}
 	}
 
+	return
+}
+
+func (n Networks) DefaultIp() (ip string, found bool) {
+	for _, networkSettings := range n {
+		if ip == "" {
+			ip = networkSettings.Ip
+		}
+		if len(networkSettings.Default) > 0 {
+			ip = networkSettings.Ip
+		}
+	}
+
+	if ip != "" {
+		found = true
+	}
 	return
 }
 

@@ -7,5 +7,11 @@ type FileSystem interface {
 	MkdirAll(path string, perm os.FileMode) (err error)
 	Chown(path, username string) (err error)
 	Chmod(path string, perm os.FileMode) (err error)
-	WriteToFile(path, content string) (err error)
+	WriteToFile(path, content string) (written bool, err error)
+	ReadFile(path string) (content string, err error)
+	FileExists(path string) bool
+	Symlink(oldPath, newPath string) (err error)
+	TempDir() (tmpDir string)
+	RemoveAll(fileOrDir string)
+	Open(path string) (file *os.File, err error)
 }

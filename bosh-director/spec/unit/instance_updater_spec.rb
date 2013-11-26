@@ -70,7 +70,10 @@ module Bosh::Director
 
     let(:agent_client) { double('Bosh::Director::AgentClient') }
 
-    subject { described_class.new(instance) }
+    subject do
+      ticker = double('ticker', advance: nil)
+      described_class.new(instance, ticker)
+    end
 
     before do
       Bosh::Director::Config.stub(:cloud).and_return(cloud)
@@ -115,12 +118,25 @@ module Bosh::Director
         end
       end
 
+      let(:preparer) do
+        instance_double('Bosh::Director::InstancePreparer', prepare: nil)
+      end
+
+      before do
+        Bosh::Director::InstancePreparer.stub(:new).with(instance, agent_client).and_return(preparer)
+      end
+
       context 'with only a dns change' do
         let(:changes) { [:dns].to_set }
 
         it 'should only call update_dns' do
           subject.should_receive(:update_dns)
           subject.should_not_receive(:step)
+          subject.update
+        end
+
+        it 'does not prepare instance' do
+          Bosh::Director::InstancePreparer.should_not_receive(:new)
           subject.update
         end
 
@@ -137,6 +153,12 @@ module Bosh::Director
           subject.stub(:apply_state)
           subject.stub(:wait_until_running)
           subject.stub(current_state: {'job_state' => 'running'})
+        end
+
+        it 'prepares the job before stopping it to minimize downtime' do
+          preparer.should_receive(:prepare).ordered
+          subject.should_receive(:stop).ordered
+          subject.update
         end
 
         it 'stops the job' do

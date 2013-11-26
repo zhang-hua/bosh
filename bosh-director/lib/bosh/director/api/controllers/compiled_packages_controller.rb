@@ -1,9 +1,11 @@
 require 'json'
+require 'tempfile'
 require 'bosh/director/api/controllers/base_controller'
 require 'bosh/director/api/stemcell_manager'
 require 'bosh/director/compiled_package_group'
 require 'bosh/director/compiled_packages_exporter'
 require 'bosh/director/stale_file_killer'
+require 'bosh/director/jobs/import_compiled_packages'
 
 module Bosh::Director
   module Api::Controllers
@@ -26,6 +28,20 @@ module Bosh::Director
         exporter.export(output_path)
 
         send_file(output_path, type: :tgz)
+      end
+
+      post '/compiled_package_groups/import', consumes: [:tgz] do
+        tempdir = Dir.mktmpdir
+        export_path = File.join(tempdir, 'compiled_packages_export.tgz')
+        # the job is responsible for cleaning this up
+        File.open(export_path, 'w') do |f|
+          while buf = request.body.read(4096)
+            f.write(buf)
+          end
+        end
+
+        task = JobQueue.new.enqueue(@user, Jobs::ImportCompiledPackages, 'import compiled packages', [tempdir])
+        redirect "/tasks/#{task.id}"
       end
 
       def find_stemcell_by_name_and_version

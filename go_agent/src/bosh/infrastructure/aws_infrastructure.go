@@ -1,7 +1,8 @@
 package infrastructure
 
 import (
-	"bosh/settings"
+	bosherr "bosh/errors"
+	boshsettings "bosh/settings"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,14 +16,24 @@ type awsInfrastructure struct {
 	resolver     dnsResolver
 }
 
-func newAwsInfrastructure(metadataHost string, resolver dnsResolver) (infrastructure Infrastructure) {
-	return awsInfrastructure{
-		metadataHost: metadataHost,
-		resolver:     resolver,
-	}
+func newAwsInfrastructure(metadataHost string, resolver dnsResolver) (infrastructure awsInfrastructure) {
+	infrastructure.metadataHost = metadataHost
+	infrastructure.resolver = resolver
+	return
 }
 
-func (inf awsInfrastructure) GetPublicKey() (publicKey string, err error) {
+func (inf awsInfrastructure) SetupSsh(delegate SshSetupDelegate, username string) (err error) {
+	publicKey, err := inf.getPublicKey()
+	if err != nil {
+		err = bosherr.WrapError(err, "Error getting public key")
+		return
+	}
+
+	err = delegate.SetupSsh(publicKey, username)
+	return
+}
+
+func (inf awsInfrastructure) getPublicKey() (publicKey string, err error) {
 	url := fmt.Sprintf("%s/latest/meta-data/public-keys/0/openssh-key", inf.metadataHost)
 
 	resp, err := http.Get(url)
@@ -40,7 +51,7 @@ func (inf awsInfrastructure) GetPublicKey() (publicKey string, err error) {
 	return
 }
 
-func (inf awsInfrastructure) GetSettings() (s settings.Settings, err error) {
+func (inf awsInfrastructure) GetSettings() (settings boshsettings.Settings, err error) {
 	instanceId, err := inf.getInstanceId()
 	if err != nil {
 		return
@@ -55,7 +66,7 @@ func (inf awsInfrastructure) GetSettings() (s settings.Settings, err error) {
 	return inf.getSettingsAtUrl(settingsUrl)
 }
 
-func (inf awsInfrastructure) SetupNetworking(delegate NetworkingDelegate, networks settings.Networks) (err error) {
+func (inf awsInfrastructure) SetupNetworking(delegate NetworkingDelegate, networks boshsettings.Networks) (err error) {
 	return delegate.SetupDhcp(networks)
 }
 
@@ -139,7 +150,7 @@ type settingsWrapperType struct {
 	Settings string
 }
 
-func (inf awsInfrastructure) getSettingsAtUrl(settingsUrl string) (s settings.Settings, err error) {
+func (inf awsInfrastructure) getSettingsAtUrl(settingsUrl string) (settings boshsettings.Settings, err error) {
 	wrapperResponse, err := http.Get(settingsUrl)
 	if err != nil {
 		return
@@ -157,6 +168,6 @@ func (inf awsInfrastructure) getSettingsAtUrl(settingsUrl string) (s settings.Se
 		return
 	}
 
-	err = json.Unmarshal([]byte(wrapper.Settings), &s)
+	err = json.Unmarshal([]byte(wrapper.Settings), &settings)
 	return
 }
