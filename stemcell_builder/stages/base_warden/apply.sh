@@ -11,16 +11,6 @@ source $base_dir/lib/prelude_apply.bash
 # Otherwise using none ubuntu host will fail creating vm
 mkdir -p $chroot/warden-cpi-dev
 
-# This is a Hacky way to force Warden in Warden to use overlayfs for now
-if [ -f $chroot/etc/lsb-release ]
-then
-  sed -i s/lucid/precise/ $chroot/etc/lsb-release
-# Centos stemcll hack for same reason
-else
-  echo "DISTRIB_CODENAME=precise" > $chroot/etc/lsb-release
-  echo "Ubuntu 12.04.3 LTS" > $chroot/etc/issue
-fi
-
 # Run rsyslog and ssh using runit and replace /usr/sbin/service with a script which call runit
 mkdir -p $chroot/etc/sv/ $chroot/etc/service/
 cp -a $assets_dir/runit/rsyslog/ $chroot/etc/sv/rsyslog
@@ -33,10 +23,22 @@ ln -s /etc/sv/rsyslog /etc/service/rsyslog
 ln -s /etc/sv/ssh /etc/service/ssh
 "
 
-# Replace /usr/sbin/service with a script which calls runit
-run_in_chroot $chroot "
-dpkg-divert --local --rename --add /usr/sbin/service
+if grep -q -i ubuntu $chroot/etc/issue
+# if this is Ubuntu stemcell
+then
+  # Replace /usr/sbin/service with a script which calls runit
+  run_in_chroot $chroot "
+  dpkg-divert --local --rename --add /usr/sbin/service
 "
+  # This is a Hacky way to force Warden in Warden to use overlayfs for now
+  sed -i s/lucid/precise/ $chroot/etc/lsb-release
+# Centos Stemcell
+else
+  # Centos stemcll hack to force Warden in Warden to use overlayfs for now
+  echo "DISTRIB_CODENAME=precise" > $chroot/etc/lsb-release
+  echo "Ubuntu 12.04.3 LTS" > $chroot/etc/issue
+fi
+
 cp -f $assets_dir/service $chroot/usr/sbin/service
 
 run_in_chroot $chroot "
