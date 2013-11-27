@@ -168,7 +168,6 @@ module Bosh::Stemcell
         # Finalisation
         :bosh_clean,
         :bosh_harden,
-        :bosh_dpkg_list,
         # Image copy
         :bosh_copy_root,
         # Final stemcell
