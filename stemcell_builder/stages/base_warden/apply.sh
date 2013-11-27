@@ -12,8 +12,14 @@ source $base_dir/lib/prelude_apply.bash
 mkdir -p $chroot/warden-cpi-dev
 
 # This is a Hacky way to force Warden in Warden to use overlayfs for now
-sed -i s/lucid/precise/ $chroot/etc/lsb-release
-
+if [ -f $chroot/etc/lsb-release ]
+then
+  sed -i s/lucid/precise/ $chroot/etc/lsb-release
+# Centos stemcll hack for same reason
+else
+  echo "DISTRIB_CODENAME=precise" > $chroot/etc/lsb-release
+  echo "Ubuntu 12.04.3 LTS" > $chroot/etc/issue
+fi
 
 # Run rsyslog and ssh using runit and replace /usr/sbin/service with a script which call runit
 mkdir -p $chroot/etc/sv/ $chroot/etc/service/
