@@ -101,7 +101,7 @@ describe 'CentOs Stemcell' do
     end
   end
 
-  context 'installed by image_install_grub' do
+  context 'installed by image_install_grub', exclude_on_warden: true do
     describe file('/etc/fstab') do
       it { should be_file }
       it { should contain 'UUID=' }
@@ -144,7 +144,7 @@ describe 'CentOs Stemcell' do
     end
   end
 
-  context 'installed by system-aws-network', exclude_on_vsphere: true do
+  context 'installed by system-aws-network', exclude_on_vsphere: true, exclude_on_warden: true do
     describe file('/etc/sysconfig/network') do
       it { should be_file }
       it { should contain 'NETWORKING=yes' }

@@ -84,7 +84,14 @@ module Bosh::Stemcell
     end
 
     def exclude_exclusions
-      infrastructure.name == 'vsphere' ? ' --tag ~exclude_on_vsphere' : ''
+      case infrastructure.name
+      when 'vsphere'
+        ' --tag ~exclude_on_vsphere'
+      when 'warden'
+        ' --tag ~exclude_on_warden'
+      else
+        ''
+      end
     end
 
     def image_file_path

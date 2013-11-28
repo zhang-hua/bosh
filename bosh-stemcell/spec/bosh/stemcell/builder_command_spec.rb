@@ -261,6 +261,19 @@ module Bosh::Stemcell
 
             it_behaves_like 'a builder that calls #configure_and_apply correctly'
           end
+
+          context 'on Warden' do
+            let(:infrastructure) do
+              instance_double(
+                'Bosh::Stemcell::Infrastructure::Warden',
+                name: 'warden',
+                hypervisor: 'boshlite'
+              )
+            end
+            let(:additional_rspec_options) { ' --tag ~exclude_on_warden' }
+
+            it_behaves_like 'a builder that calls #configure_and_apply correctly'
+          end
         end
 
         context 'with Ubuntu' do
@@ -299,6 +312,19 @@ module Bosh::Stemcell
                 hypervisor: 'kvm'
               )
             end
+
+            it_behaves_like 'a builder that calls #configure_and_apply correctly'
+          end
+
+          context 'on Warden' do
+            let(:infrastructure) do
+              instance_double(
+                'Bosh::Stemcell::Infrastructure::Warden',
+                name: 'warden',
+                hypervisor: 'boshlite'
+              )
+            end
+            let(:additional_rspec_options) { ' --tag ~exclude_on_warden' }
 
             it_behaves_like 'a builder that calls #configure_and_apply correctly'
           end
