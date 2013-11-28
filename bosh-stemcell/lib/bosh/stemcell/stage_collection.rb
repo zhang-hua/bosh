@@ -170,6 +170,8 @@ module Bosh::Stemcell
         :bosh_harden,
         # Image copy
         :bosh_copy_root,
+        # only used for spec test
+        :image_create,
         # Final stemcell
         :stemcell
       ]
