@@ -34,9 +34,14 @@ then
   sed -i s/lucid/precise/ $chroot/etc/lsb-release
 # Centos Stemcell
 else
+  # Add runsvdir-start for Centos to bootstrap agent
+  cp -f $assets_dir/runsvdir-start $chroot/usr/sbin/runsvdir-start
+  run_in_chroot $chroot "
+  chmod +x /usr/sbin/runsvdir-start
+  "
   # Centos stemcll hack to force Warden in Warden to use overlayfs for now
   echo "DISTRIB_CODENAME=precise" > $chroot/etc/lsb-release
-  echo "Ubuntu 12.04.3 LTS" > $chroot/etc/issue
+  echo "Ubuntu (fake tag to fool warden)" >> $chroot/etc/issue
 fi
 
 cp -f $assets_dir/service $chroot/usr/sbin/service
