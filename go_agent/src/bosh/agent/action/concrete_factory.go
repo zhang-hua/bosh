@@ -1,6 +1,7 @@
 package action
 
 import (
+	boshas "bosh/agent/applyspec"
 	boshtask "bosh/agent/task"
 	boshblobstore "bosh/blobstore"
 	boshplatform "bosh/platform"
@@ -11,17 +12,30 @@ type concreteFactory struct {
 	availableActions map[string]Action
 }
 
-func NewFactory(settings boshsettings.Settings, platform boshplatform.Platform, blobstore boshblobstore.Blobstore, taskService boshtask.Service) (factory Factory) {
+func NewFactory(
+	settings *boshsettings.Provider,
+	platform boshplatform.Platform,
+	blobstore boshblobstore.Blobstore,
+	taskService boshtask.Service,
+	applier boshas.Applier,
+) (factory Factory) {
+
 	fs := platform.GetFs()
+	compressor := platform.GetCompressor()
 
 	factory = concreteFactory{
 		availableActions: map[string]Action{
-			"apply":      newApply(fs),
-			"ping":       newPing(),
-			"get_task":   newGetTask(taskService),
-			"get_state":  newGetState(settings, fs),
-			"ssh":        newSsh(settings, platform),
-			"fetch_logs": newLogs(platform, blobstore),
+			"apply":        newApply(applier, fs, platform),
+			"drain":        newDrain(),
+			"fetch_logs":   newLogs(compressor, blobstore),
+			"get_task":     newGetTask(taskService),
+			"get_state":    newGetState(settings, fs),
+			"mount_disk":   newMountDisk(settings, platform),
+			"ping":         newPing(),
+			"ssh":          newSsh(settings, platform),
+			"start":        newStart(),
+			"stop":         newStop(),
+			"unmount_disk": newUnmountDisk(settings, platform),
 		},
 	}
 	return

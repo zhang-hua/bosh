@@ -3,6 +3,8 @@ package agent
 import (
 	boshaction "bosh/agent/action"
 	boshtask "bosh/agent/task"
+	bosherr "bosh/errors"
+	boshlog "bosh/logger"
 	boshmbus "bosh/mbus"
 	boshplatform "bosh/platform"
 	boshsettings "bosh/settings"
@@ -10,7 +12,8 @@ import (
 )
 
 type agent struct {
-	settings          boshsettings.Settings
+	settings          boshsettings.DiskSettings
+	logger            boshlog.Logger
 	mbusHandler       boshmbus.Handler
 	platform          boshplatform.Platform
 	taskService       boshtask.Service
@@ -18,13 +21,17 @@ type agent struct {
 	heartbeatInterval time.Duration
 }
 
-func New(settings boshsettings.Settings,
+func New(
+	settings boshsettings.DiskSettings,
+	logger boshlog.Logger,
 	mbusHandler boshmbus.Handler,
 	platform boshplatform.Platform,
 	taskService boshtask.Service,
-	actionFactory boshaction.Factory) (a agent) {
+	actionFactory boshaction.Factory,
+) (a agent) {
 
 	a.settings = settings
+	a.logger = logger
 	a.mbusHandler = mbusHandler
 	a.platform = platform
 	a.taskService = taskService
@@ -34,9 +41,9 @@ func New(settings boshsettings.Settings,
 }
 
 func (a agent) Run() (err error) {
-
 	err = a.platform.StartMonit()
 	if err != nil {
+		err = bosherr.WrapError(err, "Starting Monit")
 		return
 	}
 
@@ -59,18 +66,22 @@ type TaskValue struct {
 }
 
 func (a agent) runMbusHandler(errChan chan error) {
+	defer a.logger.HandlePanic("Agent Message Bus Handler")
+
 	handlerFunc := func(req boshmbus.Request) (resp boshmbus.Response) {
 		switch req.Method {
-		case "get_task", "ping", "get_state", "ssh":
+		case "get_task", "ping", "get_state", "ssh", "start":
 			action := a.actionFactory.Create(req.Method)
 			value, err := action.Run(req.GetPayload())
 
 			if err != nil {
+				err = bosherr.WrapError(err, "Action Failed %s", req.Method)
 				resp = boshmbus.NewExceptionResponse(err.Error())
+				a.logger.Error("Agent", err.Error())
 				return
 			}
 			resp = boshmbus.NewValueResponse(value)
-		case "apply", "fetch_logs":
+		case "apply", "fetch_logs", "stop", "drain", "mount_disk", "unmount_disk":
 			task := a.taskService.StartTask(func() (value interface{}, err error) {
 				action := a.actionFactory.Create(req.Method)
 				value, err = action.Run(req.GetPayload())
@@ -83,14 +94,23 @@ func (a agent) runMbusHandler(errChan chan error) {
 			})
 		default:
 			resp = boshmbus.NewExceptionResponse("unknown message %s", req.Method)
+			a.logger.Error("Agent", "Unknown action %s", req.Method)
 		}
 
 		return
 	}
-	errChan <- a.mbusHandler.Run(handlerFunc)
+
+	err := a.mbusHandler.Run(handlerFunc)
+	if err != nil {
+		err = bosherr.WrapError(err, "Message Bus Handler")
+	}
+
+	errChan <- err
 }
 
 func (a agent) generateHeartbeats(heartbeatChan chan boshmbus.Heartbeat) {
+	defer a.logger.HandlePanic("Agent Generate Heartbeats")
+
 	tickChan := time.Tick(a.heartbeatInterval)
 	heartbeatChan <- getHeartbeat(a.settings, a.platform.GetStatsCollector())
 	for {
@@ -102,5 +122,12 @@ func (a agent) generateHeartbeats(heartbeatChan chan boshmbus.Heartbeat) {
 }
 
 func (a agent) sendHeartbeats(heartbeatChan chan boshmbus.Heartbeat, errChan chan error) {
-	errChan <- a.mbusHandler.SendPeriodicHeartbeat(heartbeatChan)
+	defer a.logger.HandlePanic("Agent Send Heartbeats")
+
+	err := a.mbusHandler.SendPeriodicHeartbeat(heartbeatChan)
+	if err != nil {
+		err = bosherr.WrapError(err, "Sending Heartbeats")
+	}
+
+	errChan <- err
 }

@@ -1,6 +1,8 @@
 package mbus
 
 import (
+	bosherr "bosh/errors"
+	boshlog "bosh/logger"
 	boshsettings "bosh/settings"
 	"encoding/json"
 	"errors"
@@ -13,19 +15,22 @@ import (
 )
 
 type natsHandler struct {
+	settings boshsettings.MbusSettings
+	logger   boshlog.Logger
 	client   yagnats.NATSClient
-	settings boshsettings.Settings
 }
 
-func newNatsHandler(client yagnats.NATSClient, settings boshsettings.Settings) (handler natsHandler) {
-	handler.client = client
+func newNatsHandler(settings boshsettings.MbusSettings, logger boshlog.Logger, client yagnats.NATSClient) (handler natsHandler) {
 	handler.settings = settings
+	handler.logger = logger
+	handler.client = client
 	return
 }
 
 func (h natsHandler) Run(handlerFunc HandlerFunc) (err error) {
 	err = h.Start(handlerFunc)
 	if err != nil {
+		err = bosherr.WrapError(err, "Starting nats handler")
 		return
 	}
 	defer h.Stop()
@@ -37,26 +42,39 @@ func (h natsHandler) Run(handlerFunc HandlerFunc) (err error) {
 func (h natsHandler) Start(handlerFunc HandlerFunc) (err error) {
 	connProvider, err := h.getConnectionInfo()
 	if err != nil {
+		err = bosherr.WrapError(err, "Getting connection info")
 		return
 	}
 
 	err = h.client.Connect(connProvider)
 	if err != nil {
+		err = bosherr.WrapError(err, "Connecting")
 		return
 	}
 
-	subject := fmt.Sprintf("agent.%s", h.settings.AgentId)
+	subject := fmt.Sprintf("agent.%s", h.settings.GetAgentId())
 
 	h.client.Subscribe(subject, func(natsMsg *yagnats.Message) {
 		req := Request{}
 		err := json.Unmarshal(natsMsg.Payload, &req)
 		if err != nil {
+			err = bosherr.WrapError(err, "Unmarshalling JSON payload")
 			return
 		}
 		req.payload = natsMsg.Payload
 
+		h.logger.Info("NATS Handler", "Received request with action %s", req.Method)
+		h.logger.DebugWithDetails("NATS Handler", "Payload", req.payload)
+
 		resp := handlerFunc(req)
 		respBytes, err := json.Marshal(resp)
+		if err != nil {
+			err = bosherr.WrapError(err, "Marshalling JSON response")
+			return
+		}
+
+		h.logger.Info("NATS Handler", "Responding")
+		h.logger.DebugWithDetails("NATS Handler", "Payload", respBytes)
 
 		h.client.Publish(req.ReplyTo, respBytes)
 	})
@@ -71,22 +89,28 @@ func (h natsHandler) Stop() {
 func (h natsHandler) SendPeriodicHeartbeat(heartbeatChan chan Heartbeat) (err error) {
 	connProvider, err := h.getConnectionInfo()
 	if err != nil {
+		err = bosherr.WrapError(err, "Getting connection info")
 		return
 	}
 
 	err = h.client.Connect(connProvider)
 	if err != nil {
+		err = bosherr.WrapError(err, "Connecting")
 		return
 	}
 
-	heartbeatSubject := fmt.Sprintf("hm.agent.heartbeat.%s", h.settings.AgentId)
+	heartbeatSubject := fmt.Sprintf("hm.agent.heartbeat.%s", h.settings.GetAgentId())
 
 	var heartbeatBytes []byte
 	for heartbeat := range heartbeatChan {
 		heartbeatBytes, err = json.Marshal(heartbeat)
 		if err != nil {
+			err = bosherr.WrapError(err, "Marshalling heartbeat")
 			return
 		}
+
+		h.logger.Info("NATS Handler", "Sending heartbeat")
+		h.logger.DebugWithDetails("NATS Handler", "Payload", heartbeatBytes)
 
 		h.client.Publish(heartbeatSubject, heartbeatBytes)
 	}
@@ -109,8 +133,9 @@ func (h natsHandler) runUntilInterrupted() {
 }
 
 func (h natsHandler) getConnectionInfo() (connInfo *yagnats.ConnectionInfo, err error) {
-	natsUrl, err := url.Parse(h.settings.Mbus)
+	natsUrl, err := url.Parse(h.settings.GetMbusUrl())
 	if err != nil {
+		err = bosherr.WrapError(err, "Parsing Nats URL")
 		return
 	}
 

@@ -5,13 +5,16 @@ import (
 	boshtask "bosh/agent/task"
 	faketask "bosh/agent/task/fakes"
 	boshassert "bosh/assert"
+	boshlog "bosh/logger"
 	boshmbus "bosh/mbus"
 	fakembus "bosh/mbus/fakes"
 	fakeplatform "bosh/platform/fakes"
 	boshstats "bosh/platform/stats"
 	fakestats "bosh/platform/stats/fakes"
 	boshsettings "bosh/settings"
+	fakesettings "bosh/settings/fakes"
 	"errors"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -20,8 +23,8 @@ import (
 func TestRunRespondsWithExceptionWhenTheMethodIsUnknown(t *testing.T) {
 	req := boshmbus.NewRequest("reply to me", "gibberish", []byte{})
 
-	settings, handler, platform, taskService, actionFactory := getAgentDependencies()
-	agent := New(settings, handler, platform, taskService, actionFactory)
+	settings, logger, handler, platform, taskService, actionFactory := getAgentDependencies()
+	agent := New(settings, logger, handler, platform, taskService, actionFactory)
 
 	err := agent.Run()
 	assert.NoError(t, err)
@@ -34,6 +37,11 @@ func TestRunRespondsWithExceptionWhenTheMethodIsUnknown(t *testing.T) {
 
 func TestRunHandlesPingMessage(t *testing.T) {
 	req := boshmbus.NewRequest("reply to me!", "ping", []byte("some payload"))
+	assertRequestIsProcessedSynchronously(t, req)
+}
+
+func TestRunHandlesStartMessage(t *testing.T) {
+	req := boshmbus.NewRequest("reply to me!", "start", []byte("some payload"))
 	assertRequestIsProcessedSynchronously(t, req)
 }
 
@@ -53,14 +61,14 @@ func TestRunHandlesSshMessage(t *testing.T) {
 }
 
 func assertRequestIsProcessedSynchronously(t *testing.T, req boshmbus.Request) {
-	settings, handler, platform, taskService, actionFactory := getAgentDependencies()
+	settings, logger, handler, platform, taskService, actionFactory := getAgentDependencies()
 
 	// when action is successful
 	actionFactory.CreateAction = &fakeaction.TestAction{
 		RunValue: "some value",
 	}
 
-	agent := New(settings, handler, platform, taskService, actionFactory)
+	agent := New(settings, logger, handler, platform, taskService, actionFactory)
 
 	err := agent.Run()
 	assert.NoError(t, err)
@@ -76,11 +84,12 @@ func assertRequestIsProcessedSynchronously(t *testing.T, req boshmbus.Request) {
 		RunErr: errors.New("some error"),
 	}
 
-	agent = New(settings, handler, platform, taskService, actionFactory)
+	agent = New(settings, logger, handler, platform, taskService, actionFactory)
 	agent.Run()
 
 	resp = handler.Func(req)
-	boshassert.MatchesJsonString(t, resp, `{"exception":{"message":"some error"}}`)
+	expectedJson := fmt.Sprintf("{\"exception\":{\"message\":\"Action Failed %s: some error\"}}", req.Method)
+	boshassert.MatchesJsonString(t, resp, expectedJson)
 }
 
 func TestRunHandlesApplyMessage(t *testing.T) {
@@ -93,13 +102,33 @@ func TestRunHandlesLogsMessage(t *testing.T) {
 	assertRequestIsProcessedAsynchronously(t, req)
 }
 
+func TestRunHandlesStopMessage(t *testing.T) {
+	req := boshmbus.NewRequest("reply to me!", "stop", []byte("some payload"))
+	assertRequestIsProcessedAsynchronously(t, req)
+}
+
+func TestRunHandlesDrainMessage(t *testing.T) {
+	req := boshmbus.NewRequest("reply to me!", "drain", []byte("some payload"))
+	assertRequestIsProcessedAsynchronously(t, req)
+}
+
+func TestRunHandlesMountDiskMessage(t *testing.T) {
+	req := boshmbus.NewRequest("reply to me!", "mount_disk", []byte("some payload"))
+	assertRequestIsProcessedAsynchronously(t, req)
+}
+
+func TestRunHandlesUnmountDiskMessage(t *testing.T) {
+	req := boshmbus.NewRequest("reply to me!", "unmount_disk", []byte("some payload"))
+	assertRequestIsProcessedAsynchronously(t, req)
+}
+
 func assertRequestIsProcessedAsynchronously(t *testing.T, req boshmbus.Request) {
-	settings, handler, platform, taskService, actionFactory := getAgentDependencies()
+	settings, logger, handler, platform, taskService, actionFactory := getAgentDependencies()
 
 	taskService.StartTaskStartedTask = boshtask.Task{Id: "found-57-id", State: boshtask.TaskStateDone}
 	actionFactory.CreateAction = &fakeaction.TestAction{RunValue: "some-task-result-value"}
 
-	agent := New(settings, handler, platform, taskService, actionFactory)
+	agent := New(settings, logger, handler, platform, taskService, actionFactory)
 
 	err := agent.Run()
 	assert.NoError(t, err)
@@ -119,7 +148,7 @@ func assertRequestIsProcessedAsynchronously(t *testing.T, req boshmbus.Request) 
 }
 
 func TestRunSetsUpHeartbeats(t *testing.T) {
-	settings, handler, platform, taskService, actionFactory := getAgentDependencies()
+	settings, logger, handler, platform, taskService, actionFactory := getAgentDependencies()
 	settings.Disks = boshsettings.Disks{
 		System:     "/dev/sda1",
 		Ephemeral:  "/dev/sdb",
@@ -138,7 +167,7 @@ func TestRunSetsUpHeartbeats(t *testing.T) {
 		},
 	}
 
-	agent := New(settings, handler, platform, taskService, actionFactory)
+	agent := New(settings, logger, handler, platform, taskService, actionFactory)
 	agent.heartbeatInterval = 5 * time.Millisecond
 	err := agent.Run()
 	assert.NoError(t, err)
@@ -183,7 +212,7 @@ func TestRunSetsUpHeartbeats(t *testing.T) {
 }
 
 func TestRunSetsUpHeartbeatsWithoutEphemeralOrPersistentDisk(t *testing.T) {
-	settings, handler, platform, taskService, actionFactory := getAgentDependencies()
+	settings, logger, handler, platform, taskService, actionFactory := getAgentDependencies()
 	settings.Disks = boshsettings.Disks{
 		System: "/dev/sda1",
 	}
@@ -196,7 +225,7 @@ func TestRunSetsUpHeartbeatsWithoutEphemeralOrPersistentDisk(t *testing.T) {
 		},
 	}
 
-	agent := New(settings, handler, platform, taskService, actionFactory)
+	agent := New(settings, logger, handler, platform, taskService, actionFactory)
 	agent.heartbeatInterval = time.Millisecond
 	err := agent.Run()
 	assert.NoError(t, err)
@@ -211,13 +240,15 @@ func TestRunSetsUpHeartbeatsWithoutEphemeralOrPersistentDisk(t *testing.T) {
 }
 
 func getAgentDependencies() (
-	settings boshsettings.Settings,
+	settings *fakesettings.FakeDiskSettings,
+	logger boshlog.Logger,
 	handler *fakembus.FakeHandler,
 	platform *fakeplatform.FakePlatform,
 	taskService *faketask.FakeService,
 	actionFactory *fakeaction.FakeFactory) {
 
-	settings = boshsettings.Settings{}
+	settings = &fakesettings.FakeDiskSettings{}
+	logger = boshlog.NewLogger(boshlog.LEVEL_NONE)
 	handler = &fakembus.FakeHandler{}
 	platform = &fakeplatform.FakePlatform{
 		FakeStatsCollector: &fakestats.FakeStatsCollector{},
