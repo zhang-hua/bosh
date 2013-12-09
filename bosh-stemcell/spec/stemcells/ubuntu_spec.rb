@@ -57,7 +57,7 @@ describe 'Ubuntu Stemcell' do
       end
     end
 
-    describe file('/etc/lsb-release') do
+    describe file('/etc/lsb-release'), exclude_on_warden: true do
       it { should be_file }
       it { should contain 'DISTRIB_RELEASE=10.04' }
       it { should contain 'DISTRIB_CODENAME=lucid' }
