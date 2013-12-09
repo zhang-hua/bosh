@@ -1,9 +1,9 @@
 package action
 
 import (
-	boshas "bosh/agent/applyspec"
+	boshappl "bosh/agent/applier"
 	boshtask "bosh/agent/task"
-	boshblobstore "bosh/blobstore"
+	boshblob "bosh/blobstore"
 	boshplatform "bosh/platform"
 	boshsettings "bosh/settings"
 )
@@ -13,11 +13,11 @@ type concreteFactory struct {
 }
 
 func NewFactory(
-	settings *boshsettings.Provider,
+	settings boshsettings.Service,
 	platform boshplatform.Platform,
-	blobstore boshblobstore.Blobstore,
+	blobstore boshblob.Blobstore,
 	taskService boshtask.Service,
-	applier boshas.Applier,
+	applier boshappl.Applier,
 ) (factory Factory) {
 
 	fs := platform.GetFs()
@@ -30,6 +30,7 @@ func NewFactory(
 			"fetch_logs":   newLogs(compressor, blobstore),
 			"get_task":     newGetTask(taskService),
 			"get_state":    newGetState(settings, fs),
+			"migrate_disk": newMigrateDisk(settings, platform),
 			"mount_disk":   newMountDisk(settings, platform),
 			"ping":         newPing(),
 			"ssh":          newSsh(settings, platform),

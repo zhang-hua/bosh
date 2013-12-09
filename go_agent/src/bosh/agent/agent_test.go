@@ -122,6 +122,11 @@ func TestRunHandlesUnmountDiskMessage(t *testing.T) {
 	assertRequestIsProcessedAsynchronously(t, req)
 }
 
+func TestRunHandlesMigrateDiskMessage(t *testing.T) {
+	req := boshmbus.NewRequest("reply to me!", "migrate_disk", []byte("some payload"))
+	assertRequestIsProcessedAsynchronously(t, req)
+}
+
 func assertRequestIsProcessedAsynchronously(t *testing.T, req boshmbus.Request) {
 	settings, logger, handler, platform, taskService, actionFactory := getAgentDependencies()
 
@@ -240,14 +245,14 @@ func TestRunSetsUpHeartbeatsWithoutEphemeralOrPersistentDisk(t *testing.T) {
 }
 
 func getAgentDependencies() (
-	settings *fakesettings.FakeDiskSettings,
+	settings *fakesettings.FakeSettingsService,
 	logger boshlog.Logger,
 	handler *fakembus.FakeHandler,
 	platform *fakeplatform.FakePlatform,
 	taskService *faketask.FakeService,
 	actionFactory *fakeaction.FakeFactory) {
 
-	settings = &fakesettings.FakeDiskSettings{}
+	settings = &fakesettings.FakeSettingsService{}
 	logger = boshlog.NewLogger(boshlog.LEVEL_NONE)
 	handler = &fakembus.FakeHandler{}
 	platform = &fakeplatform.FakePlatform{

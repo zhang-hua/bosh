@@ -1,11 +1,11 @@
 package action
 
 import (
-	fakeas "bosh/agent/applyspec/fakes"
+	fakeappl "bosh/agent/applier/fakes"
 	faketask "bosh/agent/task/fakes"
 	fakeblobstore "bosh/blobstore/fakes"
 	fakeplatform "bosh/platform/fakes"
-	boshsettings "bosh/settings"
+	fakesettings "bosh/settings/fakes"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -17,6 +17,7 @@ func TestNewFactory(t *testing.T) {
 		"fetch_logs",
 		"get_task",
 		"get_state",
+		"migrate_disk",
 		"mount_disk",
 		"ping",
 		"ssh",
@@ -61,6 +62,13 @@ func TestNewFactoryGetState(t *testing.T) {
 	assert.Equal(t, newGetState(settings, platform.GetFs()), action)
 }
 
+func TestNewFactoryMigrateDisk(t *testing.T) {
+	settings, platform, _, _, _, factory := buildFactory()
+	action := factory.Create("migrate_disk")
+	assert.NotNil(t, action)
+	assert.Equal(t, newMigrateDisk(settings, platform), action)
+}
+
 func TestNewFactoryMountDisk(t *testing.T) {
 	settings, platform, _, _, _, factory := buildFactory()
 	action := factory.Create("mount_disk")
@@ -83,18 +91,18 @@ func TestNewFactoryUnmountDisk(t *testing.T) {
 }
 
 func buildFactory() (
-	settings *boshsettings.Provider,
+	settings *fakesettings.FakeSettingsService,
 	platform *fakeplatform.FakePlatform,
 	blobstore *fakeblobstore.FakeBlobstore,
 	taskService *faketask.FakeService,
-	applier *fakeas.FakeApplier,
+	applier *fakeappl.FakeApplier,
 	factory Factory) {
 
-	settings = boshsettings.NewProvider(boshsettings.Settings{})
+	settings = &fakesettings.FakeSettingsService{}
 	platform = fakeplatform.NewFakePlatform()
 	blobstore = &fakeblobstore.FakeBlobstore{}
 	taskService = &faketask.FakeService{}
-	applier = &fakeas.FakeApplier{}
+	applier = fakeappl.NewFakeApplier()
 
 	factory = NewFactory(settings, platform, blobstore, taskService, applier)
 	return

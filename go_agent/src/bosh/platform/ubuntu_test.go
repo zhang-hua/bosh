@@ -103,7 +103,7 @@ foobar:...
 
 func TestUbuntuSetupSsh(t *testing.T) {
 	fakeStats, fakeFs, fakeCmdRunner, fakeDiskManager, fakeCompressor := getUbuntuDependencies()
-	fakeFs.HomeDirHomeDir = "/some/home/dir"
+	fakeFs.HomeDirHomePath = "/some/home/dir"
 
 	ubuntu := newUbuntuPlatform(fakeStats, fakeFs, fakeCmdRunner, fakeDiskManager, fakeCompressor)
 	ubuntu.SetupSsh("some public key", "vcap")
@@ -452,6 +452,24 @@ func testUbuntuCalculateEphemeralDiskPartitionSizes(t *testing.T, totalMemInMb, 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedSwap, swapSize)
 	assert.Equal(t, diskSizeInMb-expectedSwap, linuxSize)
+}
+
+func TestUbuntuMigratePersistentDisk(t *testing.T) {
+	fakeStats, fakeFs, fakeCmdRunner, fakeDiskManager, fakeCompressor := getUbuntuDependencies()
+	fakeMounter := fakeDiskManager.FakeMounter
+
+	ubuntu := newUbuntuPlatform(fakeStats, fakeFs, fakeCmdRunner, fakeDiskManager, fakeCompressor)
+
+	ubuntu.MigratePersistentDisk("/from/path", "/to/path")
+
+	assert.Equal(t, fakeMounter.RemountAsReadonlyPath, "/from/path")
+
+	assert.Equal(t, 1, len(fakeCmdRunner.RunCommands))
+	assert.Equal(t, []string{"sh", "-c", "(tar -C /from/path -cf - .) | (tar -C /to/path -xpf -)"}, fakeCmdRunner.RunCommands[0])
+
+	assert.Equal(t, fakeMounter.UnmountPartitionPath, "/from/path")
+	assert.Equal(t, fakeMounter.RemountFromMountPoint, "/to/path")
+	assert.Equal(t, fakeMounter.RemountToMountPoint, "/from/path")
 }
 
 func TestStartMonit(t *testing.T) {

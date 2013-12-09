@@ -12,7 +12,7 @@ import (
 )
 
 type agent struct {
-	settings          boshsettings.DiskSettings
+	settings          boshsettings.Service
 	logger            boshlog.Logger
 	mbusHandler       boshmbus.Handler
 	platform          boshplatform.Platform
@@ -22,7 +22,7 @@ type agent struct {
 }
 
 func New(
-	settings boshsettings.DiskSettings,
+	settings boshsettings.Service,
 	logger boshlog.Logger,
 	mbusHandler boshmbus.Handler,
 	platform boshplatform.Platform,
@@ -81,7 +81,7 @@ func (a agent) runMbusHandler(errChan chan error) {
 				return
 			}
 			resp = boshmbus.NewValueResponse(value)
-		case "apply", "fetch_logs", "stop", "drain", "mount_disk", "unmount_disk":
+		case "apply", "fetch_logs", "stop", "drain", "mount_disk", "unmount_disk", "migrate_disk":
 			task := a.taskService.StartTask(func() (value interface{}, err error) {
 				action := a.actionFactory.Create(req.Method)
 				value, err = action.Run(req.GetPayload())
