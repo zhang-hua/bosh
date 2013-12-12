@@ -140,5 +140,16 @@ module Bosh::Agent
         end
       end
     end
+
+    describe '.stop_services' do
+      let(:monit_client) { instance_double('Bosh::Agent::MonitClient') }
+      before { Bosh::Agent::MonitClient.stub(:new).with(/127.0.0.1:2822/, anything).and_return(monit_client) }
+
+      it 'stops all services in the group via the monit client' do
+        monit_client.should_receive(:stop).with(group: BOSH_APP_GROUP)
+
+        Monit.stop_services
+      end
+    end
   end
 end
