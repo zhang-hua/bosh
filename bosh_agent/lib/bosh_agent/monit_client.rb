@@ -1,6 +1,7 @@
 require "logger"
 require "net/http"
 require "crack"
+require 'common/retryable'
 
 module Bosh::Agent
   class MonitClient
@@ -44,7 +45,12 @@ module Bosh::Agent
     end
 
     def stop(arg)
-      service_names(arg).each { |service_name| service_action(service_name, "stop") }
+      service_names(arg).each  do |service_name|
+        service_action(service_name, "stop")
+        Bosh::Retryable.new(tries:60).retryer do
+          client.status(group: arg)[service_name][:monitor] == 0
+        end
+      end
     end
 
     def restart(arg)
@@ -105,6 +111,7 @@ module Bosh::Agent
 
     def service_names(arg)
       status = get_status
+      puts status.inspect
       services = get_services(status, arg)
       services.collect { |service| service["name"] }
     end

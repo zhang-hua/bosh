@@ -222,5 +222,34 @@ module Bosh::Agent
         end
       end
     end
+
+
+  end
+
+  describe ".stop" do
+    let(:retryable) { instance_double('Bosh::Retryable') }
+    let(:response) { double('fake http response', code: '200', body: 'fake response body') }
+    let(:net) { instance_double('Net::HTTP', request: response) }
+    let(:request) { instance_double('Net::HTTP::Get', basic_auth: nil) }
+
+    it 'retries until none of of processes in said group are monitored' do
+
+      client = MonitClient.new("http://localhost:123")
+      Net::HTTP.stub(:new).and_return(net)
+      Net::HTTP::Get.stub(:new).and_return(request)
+      Crack::XML.stub(:parse).and_return({ 'monit' => { 'services' => {'service' => {'name' => 'fake service name'}} } })
+
+      client.stub(:status)
+      client.stub(:status).with(group: BOSH_APP_GROUP).and_return(
+          {'hm_evacuator' => { monitor: 0 }}
+        )
+      #client.should_receive(:status).with(group: BOSH_APP_GROUP).and_return(
+      #  {'hm_evacuator' => { monitor: 0 }}
+      #)
+
+      retryable.should_receive(:retryer).and_yield
+
+      client.stop(BOSH_APP_GROUP)
+    end
   end
 end

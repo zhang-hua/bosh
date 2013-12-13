@@ -144,12 +144,28 @@ module Bosh::Agent
     describe '.stop_services' do
       let(:monit_client) { instance_double('Bosh::Agent::MonitClient') }
       before { Bosh::Agent::MonitClient.stub(:new).with(/127.0.0.1:2822/, anything).and_return(monit_client) }
+      let(:retryable) { instance_double('Bosh::Retryable') }
+      before { Bosh::Retryable.stub(:new).with(tries: 60).and_return(retryable) }
 
       it 'stops all services in the group via the monit client' do
         monit_client.should_receive(:stop).with(group: BOSH_APP_GROUP)
 
         Monit.stop_services
       end
+
+      # We have to punt on the "monitor=0" thing
+      # because monit does not tell us that they are "stopped"
+      #it 'retries until none of of processes in said group are monitored' do
+      #  monit_client.stub(:stop).with(group: BOSH_APP_GROUP)
+      #
+      #  monit_client.should_receive(:status).with(group: BOSH_APP_GROUP).and_return(
+      #    {'hm_evacuator' => { monitor: 0 }}
+      #  )
+      #
+      #  retryable.should_receive(:retryer).and_yield
+      #
+      #  Monit.stop_services
+      #end
     end
   end
 end
