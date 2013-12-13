@@ -2,7 +2,7 @@
 
 Tools for creating stemcells
 
-## Building a stemcell
+## Building a stemcell on AWS
 
 #### Once-off manual steps:
 
@@ -34,6 +34,36 @@ Substitute *\<current_build\>* with the current build number, which can be found
       bundle install --local
       CANDIDATE_BUILD_NUMBER=<current_build> http_proxy=http://localhost:3142/ bundle exec rake ci:build_stemcell[vsphere,centos]
     ' local
+
+## Building a stemcell on OpenStack
+
+*[This is a work-in-progress]*
+
+#### Once-off manual steps:
+
+Install the vagrant plugins we use:
+
+	vagrant plugin install vagrant-berkshelf
+	vagrant plugin install vagrant-omnibus
+	vagrant plugin install vagrant-aws
+
+#### Bring up the vagrant stemcell building VM
+
+Downloading the stemcell takes ~15 hours on our current connection, so we build the stemcell on AWS
+
+	export BOSH_AWS_ACCESS_KEY_ID=AKIA…
+	export BOSH_AWS_SECRET_ACCESS_KEY=blahblah
+	vagrant up remote
+
+#### Build the stemcell from inside the VM
+
+Substitute *\<current_build\>* with the current build number, which can be found by looking at [bosh artifacts](http://bosh_artifacts.cfapps.io)
+
+    vagrant ssh remote
+    tmux
+    cd /bosh
+    bundle install --local
+    CANDIDATE_BUILD_NUMBER=<current_build> http_proxy=http://localhost:3142/ bundle exec rake ci:build_stemcell[openstack,centos]
 
 # Run the stemcell locally with Fusion
 
