@@ -24,12 +24,13 @@ func NewFactory(
 ) (factory Factory) {
 
 	fs := platform.GetFs()
+	runner := platform.GetRunner()
 	compressor := platform.GetCompressor()
 
 	factory = concreteFactory{
 		availableActions: map[string]Action{
 			"apply":           newApply(applier, fs, platform),
-			"drain":           newDrain(),
+			"drain":           newDrain(runner, fs),
 			"fetch_logs":      newLogs(compressor, blobstore),
 			"get_task":        newGetTask(taskService),
 			"get_state":       newGetState(settings, fs),

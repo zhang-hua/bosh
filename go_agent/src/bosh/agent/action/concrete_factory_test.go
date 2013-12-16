@@ -50,6 +50,14 @@ func TestNewFactoryApply(t *testing.T) {
 	assert.Equal(t, newApply(applier, platform.Fs, platform), action)
 }
 
+func TestNewFactoryDrain(t *testing.T) {
+	_, platform, _, _, _, _, factory := buildFactory()
+	action, err := factory.Create("drain")
+	assert.NoError(t, err)
+	assert.NotNil(t, action)
+	assert.Equal(t, newDrain(platform.Runner, platform.Fs), action)
+}
+
 func TestNewFactoryFetchLogs(t *testing.T) {
 	_, platform, blobstore, _, _, _, factory := buildFactory()
 	action, err := factory.Create("fetch_logs")
