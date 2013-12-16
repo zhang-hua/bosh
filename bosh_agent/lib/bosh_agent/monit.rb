@@ -1,5 +1,6 @@
 # Copyright (c) 2009-2012 VMware, Inc.
 require 'bosh_agent/monit_client'
+require 'common/retryable'
 
 module Bosh::Agent
   # A good chunk of this code is lifted from the implementation of POSIX::Spawn::Child
@@ -181,6 +182,9 @@ module Bosh::Agent
       def stop_services(attempts=20)
         retry_monit_request(attempts) do |client|
           client.stop(:group => BOSH_APP_GROUP)
+          Bosh::Retryable.new(tries: 60).retryer do
+            client.status(group: BOSH_APP_GROUP).all? { |_, status| status[:monitor] == 0 }
+          end
         end
       end
 

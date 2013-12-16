@@ -144,11 +144,61 @@ module Bosh::Agent
     describe '.stop_services' do
       let(:monit_client) { instance_double('Bosh::Agent::MonitClient') }
       before { Bosh::Agent::MonitClient.stub(:new).with(/127.0.0.1:2822/, anything).and_return(monit_client) }
+      let(:retryable) { instance_double('Bosh::Retryable') }
+      before { Bosh::Retryable.stub(:new).with(tries: 60).and_return(retryable) }
 
       it 'stops all services in the group via the monit client' do
+        retryable.stub(:retryer)
         monit_client.should_receive(:stop).with(group: BOSH_APP_GROUP)
 
         Monit.stop_services
+      end
+
+      # We have to punt on the "monitor=0" thing
+      # because monit does not tell us that they are "stopped"
+      context 'when all processes in the group are unmonitored' do
+        before do
+          monit_client.stub(:stop).with(group: BOSH_APP_GROUP)
+
+          monit_client.stub(:status).with(group: BOSH_APP_GROUP).and_return(
+            {
+              'hm_evacuator' => { monitor: 0 },
+            }
+          )
+        end
+
+        it 'succeeds' do
+          retry_block = nil
+          retryable.should_receive(:retryer) do |&b|
+            retry_block = b
+          end
+
+          Monit.stop_services
+          expect(retry_block.call).to be_true
+        end
+      end
+
+      context 'when some processes in the group are still monitored' do
+        before do
+          monit_client.stub(:stop).with(group: BOSH_APP_GROUP)
+
+          monit_client.stub(:status).with(group: BOSH_APP_GROUP).and_return(
+            {
+              'another_process' => { monitor: 0 },
+              'hm_evacuator' => { monitor: 1 },
+            }
+          )
+        end
+
+        it 'retries' do
+          retry_block = nil
+          retryable.should_receive(:retryer) do |&b|
+            retry_block = b
+          end
+
+          Monit.stop_services
+          expect(retry_block.call).to be_false
+        end
       end
     end
   end
