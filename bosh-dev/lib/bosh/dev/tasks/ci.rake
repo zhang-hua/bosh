@@ -48,7 +48,9 @@ namespace :ci do
 
   def build_stemcell(infrastructure_name, operating_system_name, agent_name)
     require 'bosh/dev/stemcell_builder'
+    require 'bosh/dev/gems_generator'
 
+    Bosh::Dev::GemComponents.new('local').build_release_gems
     stemcell_builder = Bosh::Dev::StemcellBuilder.for_candidate_build(
       infrastructure_name, operating_system_name, agent_name)
     stemcell_builder.build_stemcell
