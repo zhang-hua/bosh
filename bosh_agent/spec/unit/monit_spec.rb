@@ -1,5 +1,3 @@
-# Copyright (c) 2009-2012 VMware, Inc.
-
 require File.dirname(__FILE__) + '/../spec_helper'
 
 module Bosh::Agent
@@ -162,7 +160,7 @@ module Bosh::Agent
 
           monit_client.stub(:status).with(group: BOSH_APP_GROUP).and_return(
             {
-              'hm_evacuator' => { monitor: 0 },
+              'hm_evacuator' => { monitor: :no },
             }
           )
         end
