@@ -1,4 +1,3 @@
-# Copyright (c) 2009-2012 VMware, Inc.
 require 'spec_helper'
 require 'fileutils'
 
@@ -75,7 +74,6 @@ describe Bosh::Agent::Message::Drain do
     handler = Bosh::Agent::Message::Drain.new(['update', new_spec])
     handler.drain.should == 10
   end
-
 
   it "should return 0 if it receives an update but doesn't have a previously applied job" do
     set_state({ })
