@@ -1,4 +1,5 @@
 require File.dirname(__FILE__) + '/../spec_helper'
+require 'fakefs/spec_helpers'
 
 describe Bosh::Agent::Bootstrap do
   let(:dummy_platform) { instance_double('Bosh::Agent::Platform::Linux::Adapter') }
@@ -229,8 +230,56 @@ describe Bosh::Agent::Bootstrap do
       it 'should setup data sys' do
         FileUtils.stub(:mkdir_p)
         @processor.should_not_receive(:sh)
-        @processor.should_receive(:setup_data_sys)
         @processor.setup_data_disk
+      end
+    end
+  end
+
+  describe "#setup_data_sys" do
+    include FakeFS::SpecHelpers
+
+    before do
+      Bosh::Agent::Config.setup({ "logging" => { "file" => StringIO.new, "level" => "DEBUG" }, "base_dir" => base_dir })
+      dummy_group = double(gid: 42)
+      Etc.stub(:getgrnam).with('vcap').and_return(dummy_group)
+    end
+
+    let(:base_dir) { '/tmp/somedir' }
+    let(:dummy_dir_path) { '/tmp/canary_dir' }
+    let(:canary_dir_mode) {
+      dir = Dir.mktmpdir('dummy_dir')
+      FileUtils.chmod(0750, dir)
+      File.stat(dir).mode
+    }
+
+    context 'log dir' do
+      let(:path) { File.join(base_dir, 'data/sys/log') }
+
+      it 'creates a data/sys/log directory' do
+        @processor.setup_data_sys
+
+        expect(File.directory? path).to be_true
+        expect(File.stat(path).gid).to eq(42)
+        expect(File.stat(path).mode).to eq(canary_dir_mode)
+
+        link_target = File.readlink(File.join(base_dir, 'sys'))
+        expect(link_target).to eq ('/tmp/somedir/data/sys')
+      end
+
+    end
+
+    context 'run dir' do
+      let(:path) { File.join(base_dir, 'data/sys/run') }
+
+      it 'creates a data/sys/run directory' do
+        @processor.setup_data_sys
+
+        expect(File.directory? path).to be_true
+        expect(File.stat(path).gid).to eq(42)
+        expect(File.stat(path).mode).to eq(canary_dir_mode)
+
+        link_target = File.readlink(File.join(base_dir, 'sys'))
+        expect(link_target).to eq ('/tmp/somedir/data/sys')
       end
     end
   end
