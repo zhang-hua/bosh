@@ -26,6 +26,15 @@ namespace :ci do
     gems_generator.generate_and_upload
   end
 
+  desc 'Build gems locally'
+  task :build_pipeline_gems do
+    require 'bosh/dev/build'
+    require 'bosh/dev/gems_generator'
+    build = Bosh::Dev::Build.candidate
+    gems_generator = Bosh::Dev::GemsGenerator.new(build)
+    gems_generator.generate_without_upload
+  end
+
   desc 'Publish CI pipeline BOSH release to S3'
   task publish_bosh_release: [:publish_pipeline_gems] do
     require 'bosh/dev/build'

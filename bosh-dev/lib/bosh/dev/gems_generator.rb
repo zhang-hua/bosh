@@ -21,5 +21,17 @@ module Bosh::Dev
         @build.upload_gems('.', 'gems')
       end
     end
+
+    def generate_without_upload
+      @components.build_release_gems
+
+      Dir.chdir('pkg') do
+        Bundler.with_clean_env do
+          # We need to run this without Bundler as we generate an index
+          # for all dependant gems when run with bundler
+          Rake::FileUtilsExt.sh('gem', 'generate_index', '.')
+        end
+      end
+    end
   end
 end
