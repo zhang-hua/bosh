@@ -31,7 +31,7 @@ module Bosh::Dev
       it 'creates a dev release then creates a new final release tarball' do
         cli_session.should_receive(:run_bosh).with('create release --force').ordered
 
-        cli_session.should_receive(:run_bosh).with('create release --force --final --with-tarball').ordered
+        cli_session.should_receive(:run_bosh).with('create release --force --with-tarball').ordered
           .and_return(create_release_output)
 
         expect(subject.create).to eq('/tmp/project-release/releases/dummy-3.tgz')
