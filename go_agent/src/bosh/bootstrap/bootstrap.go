@@ -62,13 +62,13 @@ func (boot bootstrap) Run() (settingsService boshsettings.Service, err error) {
 		return
 	}
 
-	err = boot.platform.SetTimeWithNtpServers(settings.Ntp, filepath.Join(boshsettings.VCAP_BASE_DIR, "/bosh/etc/ntpserver"))
+	err = boot.platform.SetTimeWithNtpServers(settings.Ntp)
 	if err != nil {
 		err = bosherr.WrapError(err, "Setting up NTP servers")
 		return
 	}
 
-	err = boot.platform.SetupEphemeralDiskWithPath(settings.Disks.Ephemeral, filepath.Join(boshsettings.VCAP_BASE_DIR, "data"))
+	err = boot.platform.SetupEphemeralDiskWithPath(settings.Disks.Ephemeral)
 	if err != nil {
 		err = bosherr.WrapError(err, "Setting up ephemeral disk")
 		return
@@ -87,13 +87,10 @@ func (boot bootstrap) Run() (settingsService boshsettings.Service, err error) {
 		}
 	}
 
-	monitUserFilePath := filepath.Join(boshsettings.VCAP_BASE_DIR, "monit", "monit.user")
-	if !boot.fs.FileExists(monitUserFilePath) {
-		_, err = boot.fs.WriteToFile(monitUserFilePath, "vcap:random-password")
-		if err != nil {
-			err = bosherr.WrapError(err, "Writing monit user file")
-			return
-		}
+	err = boot.platform.SetupMonitUser()
+	if err != nil {
+		err = bosherr.WrapError(err, "Setting up monit user")
+		return
 	}
 
 	err = boot.platform.StartMonit()

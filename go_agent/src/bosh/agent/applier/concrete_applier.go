@@ -2,71 +2,84 @@ package applier
 
 import (
 	as "bosh/agent/applier/applyspec"
-	bc "bosh/agent/applier/bundlecollection"
-	models "bosh/agent/applier/models"
+	ja "bosh/agent/applier/jobapplier"
 	pa "bosh/agent/applier/packageapplier"
 	bosherr "bosh/errors"
+	boshmon "bosh/monitor"
 	boshsettings "bosh/settings"
+	boshdirs "bosh/settings/directories"
 )
 
 type concreteApplier struct {
-	jobsBc            bc.BundleCollection
+	jobApplier        ja.JobApplier
 	packageApplier    pa.PackageApplier
 	logrotateDelegate LogrotateDelegate
+	monitor           boshmon.Monitor
+	dirProvider       boshdirs.DirectoriesProvider
 }
 
 func NewConcreteApplier(
-	jobsBc bc.BundleCollection,
+	jobApplier ja.JobApplier,
 	packageApplier pa.PackageApplier,
 	logrotateDelegate LogrotateDelegate,
+	monitor boshmon.Monitor,
+	dirProvider boshdirs.DirectoriesProvider,
 ) *concreteApplier {
 	return &concreteApplier{
-		jobsBc:            jobsBc,
+		jobApplier:        jobApplier,
 		packageApplier:    packageApplier,
 		logrotateDelegate: logrotateDelegate,
+		monitor:           monitor,
+		dirProvider:       dirProvider,
 	}
 }
 
-func (s *concreteApplier) Apply(applySpec as.ApplySpec) error {
-	for _, job := range applySpec.Jobs() {
-		err := s.applyJob(job)
+func (a *concreteApplier) Apply(applySpec as.ApplySpec) (err error) {
+	jobs := applySpec.Jobs()
+	for _, job := range jobs {
+		err = a.jobApplier.Apply(job)
 		if err != nil {
-			return err
+			err = bosherr.WrapError(err, "Applying job %s", job.Name)
+			return
 		}
 	}
 
 	for _, pkg := range applySpec.Packages() {
-		err := s.packageApplier.Apply(pkg)
+		err = a.packageApplier.Apply(pkg)
 		if err != nil {
-			return err
+			err = bosherr.WrapError(err, "Applying package %s", pkg.Name)
+			return
 		}
 	}
 
-	return s.setUpLogrotate(applySpec)
-}
+	for i := 0; i < len(jobs); i++ {
+		job := jobs[len(jobs)-1-i]
 
-func (s *concreteApplier) applyJob(job models.Job) error {
-	_, _, err := s.jobsBc.Install(job)
-	if err != nil {
-		return err
+		err = a.jobApplier.Configure(job, i)
+		if err != nil {
+			err = bosherr.WrapError(err, "Configuring job %s", job.Name)
+			return
+		}
 	}
 
-	err = s.jobsBc.Enable(job)
+	err = a.monitor.Reload()
 	if err != nil {
-		return err
+		err = bosherr.WrapError(err, "Reloading monitor")
+		return
 	}
 
-	return nil
+	err = a.setUpLogrotate(applySpec)
+	return
 }
 
-func (s *concreteApplier) setUpLogrotate(applySpec as.ApplySpec) error {
-	err := s.logrotateDelegate.SetupLogrotate(
+func (a *concreteApplier) setUpLogrotate(applySpec as.ApplySpec) (err error) {
+	err = a.logrotateDelegate.SetupLogrotate(
 		boshsettings.VCAP_USERNAME,
-		boshsettings.VCAP_BASE_DIR,
+		a.dirProvider.BaseDir(),
 		applySpec.MaxLogFileSize(),
 	)
 	if err != nil {
 		err = bosherr.WrapError(err, "Logrotate setup failed")
 	}
-	return err
+	return
 }

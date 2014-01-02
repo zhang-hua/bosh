@@ -4,39 +4,41 @@ import (
 	bosherr "bosh/errors"
 	boshplatform "bosh/platform"
 	boshsettings "bosh/settings"
+	boshdirs "bosh/settings/directories"
 )
 
 type mountDiskAction struct {
-	settings boshsettings.Service
-	platform boshplatform.Platform
+	settings    boshsettings.Service
+	platform    boshplatform.Platform
+	dirProvider boshdirs.DirectoriesProvider
 }
 
-func newMountDisk(settings boshsettings.Service, platform boshplatform.Platform) (mountDisk mountDiskAction) {
+func newMountDisk(settings boshsettings.Service, platform boshplatform.Platform, dirProvider boshdirs.DirectoriesProvider) (mountDisk mountDiskAction) {
 	mountDisk.settings = settings
 	mountDisk.platform = platform
+	mountDisk.dirProvider = dirProvider
 	return
 }
 
-func (a mountDiskAction) Run(payloadBytes []byte) (value interface{}, err error) {
+func (a mountDiskAction) IsAsynchronous() bool {
+	return true
+}
+
+func (a mountDiskAction) Run(volumeId string) (value interface{}, err error) {
 	err = a.settings.Refresh()
 	if err != nil {
 		err = bosherr.WrapError(err, "Refreshing the settings")
 		return
 	}
 
-	diskParams, err := NewDiskParams(a.settings, payloadBytes)
-	if err != nil {
-		err = bosherr.WrapError(err, "Parsing payload into disk params")
+	disksSettings := a.settings.GetDisks()
+	devicePath, found := disksSettings.Persistent[volumeId]
+	if !found {
+		err = bosherr.New("Persistent disk with volume id '%s' could not be found", volumeId)
 		return
 	}
 
-	devicePath, err := diskParams.GetDevicePath()
-	if err != nil {
-		err = bosherr.WrapError(err, "Getting device path from params")
-		return
-	}
-
-	mountPoint := a.settings.GetStoreMountPoint()
+	mountPoint := a.dirProvider.StoreDir()
 
 	isMountPoint, err := a.platform.IsMountPoint(mountPoint)
 	if err != nil {
@@ -44,7 +46,7 @@ func (a mountDiskAction) Run(payloadBytes []byte) (value interface{}, err error)
 		return
 	}
 	if isMountPoint {
-		mountPoint = a.settings.GetStoreMigrationMountPoint()
+		mountPoint = a.dirProvider.StoreMigrationDir()
 	}
 
 	err = a.platform.MountPersistentDisk(devicePath, mountPoint)

@@ -1,8 +1,7 @@
 package platform
 
 import (
-	boshdisk "bosh/platform/disk"
-	fakedisk "bosh/platform/disk/fakes"
+	boshcmd "bosh/platform/commands"
 	boshstats "bosh/platform/stats"
 	boshsettings "bosh/settings"
 	boshsys "bosh/system"
@@ -27,8 +26,8 @@ func (p dummyPlatform) GetStatsCollector() (collector boshstats.StatsCollector) 
 	return boshstats.NewDummyStatsCollector()
 }
 
-func (p dummyPlatform) GetCompressor() (compressor boshdisk.Compressor) {
-	return &fakedisk.FakeCompressor{}
+func (p dummyPlatform) GetCompressor() (compressor boshcmd.Compressor) {
+	return boshcmd.DummyCompressor{}
 }
 
 func (p dummyPlatform) SetupRuntimeConfiguration() (err error) {
@@ -67,11 +66,11 @@ func (p dummyPlatform) SetupLogrotate(groupName, basePath, size string) (err err
 	return
 }
 
-func (p dummyPlatform) SetTimeWithNtpServers(servers []string, serversFilePath string) (err error) {
+func (p dummyPlatform) SetTimeWithNtpServers(servers []string) (err error) {
 	return
 }
 
-func (p dummyPlatform) SetupEphemeralDiskWithPath(devicePath, mountPoint string) (err error) {
+func (p dummyPlatform) SetupEphemeralDiskWithPath(devicePath string) (err error) {
 	return
 }
 
@@ -96,5 +95,13 @@ func (p dummyPlatform) IsDevicePathMounted(path string) (result bool, err error)
 }
 
 func (p dummyPlatform) StartMonit() (err error) {
+	return
+}
+
+func (p dummyPlatform) SetupMonitUser() (err error) {
+	return
+}
+
+func (p dummyPlatform) GetMonitCredentials() (username, password string, err error) {
 	return
 }
