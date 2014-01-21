@@ -4,42 +4,53 @@ import (
 	bosherr "bosh/errors"
 	boshplatform "bosh/platform"
 	boshsettings "bosh/settings"
+	boshdir "bosh/settings/directories"
 	boshuuid "bosh/uuid"
+	"fmt"
 	"path/filepath"
 )
 
 type provider struct {
-	blobstores map[boshsettings.BlobstoreType]Blobstore
+	platform    boshplatform.Platform
+	dirProvider boshdir.DirectoriesProvider
+	uuidGen     boshuuid.Generator
 }
 
-func NewProvider(platform boshplatform.Platform) (p provider) {
-	fs := platform.GetFs()
-	runner := platform.GetRunner()
-	uuidGen := boshuuid.NewGenerator()
-	s3cliConfigPath := filepath.Join(boshsettings.VCAP_ETC_DIR, "s3cli")
-
-	p.blobstores = map[boshsettings.BlobstoreType]Blobstore{
-		boshsettings.BlobstoreTypeDav:   newDummyBlobstore(),
-		boshsettings.BlobstoreTypeDummy: newDummyBlobstore(),
-		boshsettings.BlobstoreTypeS3:    newS3Blobstore(fs, runner, uuidGen, s3cliConfigPath),
-	}
+func NewProvider(platform boshplatform.Platform, dirProvider boshdir.DirectoriesProvider) (p provider) {
+	p.uuidGen = boshuuid.NewGenerator()
+	p.platform = platform
+	p.dirProvider = dirProvider
 	return
 }
 
 func (p provider) Get(settings boshsettings.Blobstore) (blobstore Blobstore, err error) {
-	blobstore, found := p.blobstores[settings.Type]
+	externalConfigFile := filepath.Join(p.dirProvider.EtcDir(), fmt.Sprintf("blobstore-%s.json", settings.Type))
 
-	if !found {
-		err = bosherr.New("Blobstore %s could not be found", settings.Type)
-		return
+	switch settings.Type {
+	case boshsettings.BlobstoreTypeDummy:
+		blobstore = newDummyBlobstore()
+	case boshsettings.BlobstoreTypeLocal:
+		blobstore = newLocalBlobstore(
+			settings.Options,
+			p.platform.GetFs(),
+			p.uuidGen,
+		)
+	default:
+		blobstore = newExternalBlobstore(
+			settings.Type,
+			settings.Options,
+			p.platform.GetFs(),
+			p.platform.GetRunner(),
+			p.uuidGen,
+			externalConfigFile,
+		)
 	}
 
 	blobstore = NewSha1Verifiable(blobstore)
 
-	blobstore, err = blobstore.ApplyOptions(settings.Options)
+	err = blobstore.Validate()
 	if err != nil {
-		err = bosherr.WrapError(err, "Applying Options")
-		return
+		err = bosherr.WrapError(err, "Validating blobstore")
 	}
 	return
 }

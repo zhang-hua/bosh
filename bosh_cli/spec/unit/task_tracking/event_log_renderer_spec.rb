@@ -93,7 +93,7 @@ describe Bosh::Cli::TaskTracking::EventLogRenderer do
     lines[0].should =~ /2\/2/
   end
 
-  it 'renders erorr state properly' do
+  it 'renders error state properly' do
     buf = StringIO.new
     Bosh::Cli::Config.output = buf
 
@@ -129,83 +129,197 @@ describe Bosh::Cli::TaskTracking::EventLogRenderer do
     lines[1].should =~ /\|o+\s+\| 1\/2/
   end
 
+  describe 'tracking stages with progress bar' do
+    context 'when event state is started' do
+      it 'updates total duration started at time' do
+        expect {
+          renderer.add_event(make_event('with-progress', 'task1', 0, 0, 'started', [], 0, nil, 101))
+        }.to change { renderer.started_at }.to(Time.at(101))
+      end
+    end
+
+    context 'when event state is finished' do
+      before { renderer.add_event(make_event('with-progress', 'task1', 0, 0, 'started')) } # start!
+
+      it 'updates total duration finished at time' do
+        expect {
+          renderer.add_event(make_event('with-progress', 'task1', 0, 0, 'finished', [], 0, nil, 101))
+        }.to change { renderer.finished_at }.to(Time.at(101))
+      end
+    end
+  end
+
   describe 'tracking stages without progress bar' do
-    subject(:renderer) { described_class.new(stages_without_progress_bar: %w(fake-e1-stage fake-e2-stage fake-e3-stage)) }
-
-    def self.it_prints_marker_for_state(event_state, ui_label)
-      it "prints #{event_state} marker with stage name + tags and task name" do
-        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, event_state, []))
-        renderer.render.should match /^\s+#{ui_label} fake-e1-stage: fake-e1-task$/
-
-        renderer.add_event(make_event('fake-e2-stage', 'fake-e2-task', 0, 0, event_state, ['fake-e2-tag1']))
-        renderer.render.should match /^\s+#{ui_label} fake-e2-stage fake-e2-tag1: fake-e2-task$/
-
-        renderer.add_event(make_event('fake-e3-stage', 'fake-e3-task', 0, 0, event_state, ['fake-e3-tag1', 'fake-e3-tag2']))
-        renderer.render.should match /^\s+#{ui_label} fake-e3-stage fake-e3-tag1, fake-e3-tag2: fake-e3-task$/
-      end
+    subject(:renderer) do
+      described_class.new(stages_without_progress_bar: %w(fake-e1-stage fake-e2-stage fake-e3-stage fake-e4-stage))
     end
 
-    it_prints_marker_for_state 'started',  'Started'
-    it_prints_marker_for_state 'finished', 'Done'
-    it_prints_marker_for_state 'failed',   'Failed'
-
-    it 'does not print any information about progress' do
-      renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'in_progress', []))
-      renderer.render.should == ''
-    end
-
-    context 'when event is in the failed state' do
-      [nil, {}].each do |incomplete_data|
-        it "prints failed marker even when no event data is not available (#{incomplete_data.inspect})" do
-          renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'failed', [], 0, incomplete_data))
-          renderer.render.should match /^\s+Failed fake-e1-stage: fake-e1-task$/
-        end
+    context 'stages' do
+      it 'outputs the stage name and duration when the stage is started' do
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 1, 1, 'started', [], 0, nil, 100))
+        expect(renderer.render).to include('Started fake-e1-stage')
       end
 
-      it 'prints failed information with included error description' do
-        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'failed', [], 0, {'error' => 'fake-error-description'}))
-        renderer.render.should match /^\s+Failed fake-e1-stage: fake-e1-task: fake-error-description$/
+      it 'outputs the stage name and duration when the stage is finished' do
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 1, 2, 'started', [], 0, nil, 100))
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 1, 2, 'finished', [], 0, nil, 1000))
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e2-task', 2, 2, 'started', [], 0, nil, 100))
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e2-task', 2, 2, 'finished', [], 0, nil, 1400))
+
+        expect(renderer.render).to include('Done fake-e1-stage (00:21:40)')
       end
-    end
 
-    it 'ends previous stage (that was rendered with a progress bar) once new stage is started' do
-      renderer.add_event(make_event('Preparing', 'Binding release', 1, 2))
-      renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'started', []))
+      it 'outputs the stage name and duration when the stage is failed' do
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 1, 2, 'started', [], 0, nil, 100))
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 1, 2, 'finished', [], 0, nil, 1000))
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e2-task', 2, 2, 'started', [], 0, nil, 100))
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e2-task', 2, 2, 'failed', [], 0, { 'error' => 'fake-error-description' }, 1000))
 
-      # Add 2nd event to make sure that there is not spaces between start events
-      renderer.add_event(make_event('fake-e2-stage', 'fake-e2-task', 0, 0, 'started', []))
+        expect(renderer.render).to include('Failed fake-e1-stage (00:15:00)')
+      end
 
-      final_console_output(renderer.render).should == <<-OUTPUT
+      it 'ends previous stage (that was rendered with a progress bar) once new stage is started' do
+        renderer.add_event(make_event('Preparing', 'Binding release', 1, 2))
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'started', []))
+
+        # Add 2nd event to make sure that there is not spaces between start events
+        renderer.add_event(make_event('fake-e2-stage', 'fake-e2-task', 0, 0, 'started', []))
+
+        final_console_output(renderer.render).should == <<-OUTPUT
 
 Preparing
 Done                          2/2 00:00:00
 
   Started fake-e1-stage: fake-e1-task
   Started fake-e2-stage: fake-e2-task
-      OUTPUT
+        OUTPUT
+      end
     end
 
-    it 'prints events right on the next line as they come in from the director' do
-      renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'started', []))
-      renderer.add_event(make_event('fake-e2-stage', 'fake-e2-task', 0, 0, 'started', []))
-      renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'finished', []))
-      renderer.render.should == <<-OUTPUT
+    context 'tasks' do
+
+      it 'prints started marker with stage name + tags and task name when the task is started' do
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'started', []))
+        expect(renderer.render).to match /^\s+Started fake-e1-stage: fake-e1-task$/
+
+        renderer.add_event(make_event('fake-e2-stage', 'fake-e2-task', 0, 0, 'started', ['fake-e2-tag1']))
+        expect(renderer.render).to match /^\s+Started fake-e2-stage fake-e2-tag1: fake-e2-task$/
+
+        renderer.add_event(make_event('fake-e3-stage', 'fake-e3-task', 0, 0, 'started', ['fake-e3-tag1', 'fake-e3-tag2']))
+        expect(renderer.render).to match /^\s+Started fake-e3-stage fake-e3-tag1, fake-e3-tag2: fake-e3-task$/
+      end
+
+      context 'task failed marker' do
+        it 'prints failed marker with stage name task name' do
+          renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'started', [], 0, nil, 100))
+          renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'failed', [], 0, nil, 1000))
+          expect(renderer.render).to match /^\s+Failed fake-e1-stage: fake-e1-task \(00:15:00\)$/
+        end
+
+        it 'prints failed marker with stage name,tag and task name' do
+          renderer.add_event(make_event('fake-e2-stage', 'fake-e2-task', 0, 0, 'started', ['fake-e2-tag1'], 0, nil, 100))
+          renderer.add_event(make_event('fake-e2-stage', 'fake-e2-task', 0, 0, 'failed', ['fake-e2-tag1'], 0, nil, 1000))
+          expect(renderer.render).to match /^\s+Failed fake-e2-stage fake-e2-tag1: fake-e2-task \(00:15:00\)$/
+        end
+
+        it 'prints failed marker with stage name,tags and task name' do
+          renderer.add_event(make_event('fake-e3-stage', 'fake-e3-task', 0, 0, 'started', ['fake-e3-tag1', 'fake-e3-tag2'], 0, nil, 100))
+          renderer.add_event(make_event('fake-e3-stage', 'fake-e3-task', 0, 0, 'failed', ['fake-e3-tag1', 'fake-e3-tag2'], 0, nil, 1000))
+          expect(renderer.render).to match /^\s+Failed fake-e3-stage fake-e3-tag1, fake-e3-tag2: fake-e3-task \(00:15:00\)$/
+        end
+
+        it 'prints failed information with included error description' do
+          renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'started', [], 0, nil, 100))
+          renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'failed', [], 0, { 'error' => 'fake-error-description' }, 1000))
+          expect(renderer.render).to match /^\s+Failed fake-e1-stage: fake-e1-task \(00:15:00\): fake-error-description$/
+        end
+
+        it 'prints failed marker even when the event data is an empty hash' do
+          renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'failed', [], 0, {}))
+          renderer.render.should match /^\s+Failed fake-e1-stage: fake-e1-task$/
+        end
+
+        it 'prints failed marker even when the event data is nil' do
+          renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'failed', [], 0, nil))
+          renderer.render.should match /^\s+Failed fake-e1-stage: fake-e1-task$/
+        end
+      end
+
+      context 'task finished marker' do
+        it 'prints stage name and task name' do
+          renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'started', [], 0, nil, 100))
+          renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'finished', [], 0, nil, 3823))
+          expect(renderer.render).to match /^\s+Done fake-e1-stage: fake-e1-task \(01:02:03\)$/
+        end
+
+        it 'print stage name, task name and tag' do
+          renderer.add_event(make_event('fake-e2-stage', 'fake-e2-task', 0, 0, 'started', ['fake-e2-tag1'], 0, nil, 100))
+          renderer.add_event(make_event('fake-e2-stage', 'fake-e2-task', 0, 0, 'finished', ['fake-e2-tag1'], 0, nil, 3823))
+          expect(renderer.render).to match /^\s+Done fake-e2-stage fake-e2-tag1: fake-e2-task \(01:02:03\)$/
+        end
+
+        it 'print stage name, task name and tags' do
+          renderer.add_event(make_event('fake-e3-stage', 'fake-e3-task', 0, 0, 'started', %W(fake-e3-tag1 fake-e3-tag2), 0, nil, 100))
+          renderer.add_event(make_event('fake-e3-stage', 'fake-e3-task', 0, 0, 'finished', %W(fake-e3-tag1 fake-e3-tag2), 0, nil, 3823))
+          expect(renderer.render).to match /^\s+Done fake-e3-stage fake-e3-tag1, fake-e3-tag2: fake-e3-task \(01:02:03\)$/
+        end
+
+        it 'print stage name, task name and no duration when finished time is invalid' do
+          renderer.add_event(make_event('fake-e4-stage', 'fake-e4-task', 0, 0, 'started', [], 0, nil, 100))
+          renderer.add_event(make_event('fake-e4-stage', 'fake-e4-task', 0, 0, 'finished', [], 0, nil, 'invalid'))
+          expect(renderer.render).to match /^\s+Done fake-e4-stage: fake-e4-task$/
+        end
+
+        it 'does not print any information about progress' do
+          renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'in_progress', []))
+          expect(renderer.render).to eq('')
+        end
+      end
+
+      it 'prints events in the correct order as they come in from the director' do
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'started', [], 0, nil, 100))
+        renderer.add_event(make_event('fake-e2-stage', 'fake-e2-task', 0, 0, 'started', []))
+        renderer.add_event(make_event('fake-e1-stage', 'fake-e1-task', 0, 0, 'finished', [], 0, nil, 1000))
+        renderer.render.should == <<-OUTPUT
   Started fake-e1-stage: fake-e1-task
   Started fake-e2-stage: fake-e2-task
-     Done fake-e1-stage: fake-e1-task
-      OUTPUT
+     Done fake-e1-stage: fake-e1-task (00:15:00)
+     Done fake-e1-stage (00:15:00)
+        OUTPUT
+      end
     end
   end
 
-  def make_event(stage, task, index, total, state = 'started', tags = [], progress = 0, data = nil)
+  describe '#started_at' do
+    context 'when event state is started' do
+      it 'updates total duration started at time' do
+        expect {
+          renderer.add_event(make_event('fake-e1-stage', 'task1', 0, 0, 'started', [], 0, nil, 101))
+        }.to change { renderer.started_at }.to(Time.at(101))
+      end
+    end
+  end
+
+  describe '#finished_at' do
+    context 'when event state is finished' do
+      it 'updates total duration finished at time' do
+        expect {
+          renderer.add_event(make_event('fake-e1-stage', 'task1', 0, 0, 'started', [], 0, nil, 0))
+          renderer.add_event(make_event('fake-e1-stage', 'task1', 0, 0, 'finished', [], 0, nil, 101))
+        }.to change { renderer.finished_at }.to(Time.at(101))
+      end
+    end
+  end
+
+  def make_event(stage, task, index, total, state = 'started', tags = [], progress = 0, data = nil, time = nil)
     event = {
-      'time'  => Time.now.to_i,
+      'time' => time || Time.now.to_i,
       'stage' => stage,
-      'task'  => task,
+      'task' => task,
       'index' => index,
       'total' => total,
       'state' => state,
-      'tags'  => tags,
+      'tags' => tags,
       'progress' => progress,
     }
 

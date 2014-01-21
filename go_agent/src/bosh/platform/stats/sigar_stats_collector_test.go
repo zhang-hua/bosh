@@ -47,8 +47,9 @@ func TestUbuntuGetDiskStats(t *testing.T) {
 
 	stats, err := collector.GetDiskStats("/")
 	assert.NoError(t, err)
-	assert.True(t, stats.Total > 0)
-	assert.True(t, stats.Used > 0)
-	assert.True(t, stats.InodeTotal > 0)
-	assert.True(t, stats.InodeUsed > 0)
+
+	assert.True(t, stats.DiskUsage.Total > 0)
+	assert.True(t, stats.DiskUsage.Used > 0)
+	assert.True(t, stats.InodeUsage.Total > 0)
+	assert.True(t, stats.InodeUsage.Used > 0)
 }

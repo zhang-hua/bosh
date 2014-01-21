@@ -5,9 +5,6 @@ module Bosh::Director
   class VmCreator
     include EncryptionHelper
 
-    # this is used to retry VM creation on clouds that are unreliable (e.g. AWS)
-    MAX_CREATE_VM_TRIES = 5
-
     def self.create(*args)
       new.create(*args)
     end
@@ -34,8 +31,8 @@ module Bosh::Director
 
       if Config.encryption?
         credentials = generate_agent_credentials
-        env["bosh"] ||= {}
-        env["bosh"]["credentials"] = credentials
+        env['bosh'] ||= {}
+        env['bosh']['credentials'] = credentials
         options[:credentials] = credentials
       end
 
@@ -45,7 +42,7 @@ module Bosh::Director
       rescue Bosh::Clouds::VMCreationFailed => e
         count += 1
         logger.error("failed to create VM, retrying (#{count})")
-        retry if e.ok_to_retry && count < MAX_CREATE_VM_TRIES
+        retry if e.ok_to_retry && count < Config.max_vm_create_tries
         raise e
       end
 

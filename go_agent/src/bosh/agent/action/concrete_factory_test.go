@@ -7,10 +7,10 @@ import (
 	boshdrain "bosh/agent/drain"
 	faketask "bosh/agent/task/fakes"
 	fakeblobstore "bosh/blobstore/fakes"
-	fakemon "bosh/monitor/fakes"
+	fakejobsuper "bosh/jobsupervisor/fakes"
 	fakenotif "bosh/notification/fakes"
 	fakeplatform "bosh/platform/fakes"
-	boshdirs "bosh/settings/directories"
+	boshntp "bosh/platform/ntp"
 	fakesettings "bosh/settings/fakes"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -24,9 +24,8 @@ type concreteFactoryDependencies struct {
 	notifier            *fakenotif.FakeNotifier
 	applier             *fakeappl.FakeApplier
 	compiler            *fakecomp.FakeCompiler
-	monitor             *fakemon.FakeMonitor
+	jobSupervisor       *fakejobsuper.FakeJobSupervisor
 	specService         *fakeas.FakeV1Service
-	dirProvider         boshdirs.DirectoriesProvider
 	drainScriptProvider boshdrain.DrainScriptProvider
 }
 
@@ -47,6 +46,7 @@ func TestNewFactory(t *testing.T) {
 		"stop",
 		"unmount_disk",
 		"compile_package",
+		"release_apply_spec",
 	}
 
 	_, factory := buildFactory()
@@ -83,7 +83,7 @@ func TestNewFactoryFetchLogs(t *testing.T) {
 	action, err := factory.Create("fetch_logs")
 	assert.NoError(t, err)
 	assert.NotNil(t, action)
-	assert.Equal(t, newLogs(deps.platform.GetCompressor(), deps.blobstore, deps.dirProvider), action)
+	assert.Equal(t, newLogs(deps.platform.GetCompressor(), deps.platform.GetCopier(), deps.blobstore, deps.platform.GetDirProvider()), action)
 }
 
 func TestNewFactoryGetTask(t *testing.T) {
@@ -96,10 +96,11 @@ func TestNewFactoryGetTask(t *testing.T) {
 
 func TestNewFactoryGetState(t *testing.T) {
 	deps, factory := buildFactory()
+	ntpService := boshntp.NewConcreteService(deps.platform.GetFs(), deps.platform.GetDirProvider())
 	action, err := factory.Create("get_state")
 	assert.NoError(t, err)
 	assert.NotNil(t, action)
-	assert.Equal(t, newGetState(deps.settings, deps.specService, deps.monitor), action)
+	assert.Equal(t, newGetState(deps.settings, deps.specService, deps.jobSupervisor, deps.platform.GetVitalsService(), ntpService), action)
 }
 
 func TestNewFactoryListDisk(t *testing.T) {
@@ -115,7 +116,7 @@ func TestNewFactoryMigrateDisk(t *testing.T) {
 	action, err := factory.Create("migrate_disk")
 	assert.NoError(t, err)
 	assert.NotNil(t, action)
-	assert.Equal(t, newMigrateDisk(deps.settings, deps.platform, deps.dirProvider), action)
+	assert.Equal(t, newMigrateDisk(deps.settings, deps.platform, deps.platform.GetDirProvider()), action)
 }
 
 func TestNewFactoryMountDisk(t *testing.T) {
@@ -123,7 +124,7 @@ func TestNewFactoryMountDisk(t *testing.T) {
 	action, err := factory.Create("mount_disk")
 	assert.NoError(t, err)
 	assert.NotNil(t, action)
-	assert.Equal(t, newMountDisk(deps.settings, deps.platform, deps.dirProvider), action)
+	assert.Equal(t, newMountDisk(deps.settings, deps.platform, deps.platform.GetDirProvider()), action)
 }
 
 func TestNewFactorySsh(t *testing.T) {
@@ -131,7 +132,7 @@ func TestNewFactorySsh(t *testing.T) {
 	action, err := factory.Create("ssh")
 	assert.NoError(t, err)
 	assert.NotNil(t, action)
-	assert.Equal(t, newSsh(deps.settings, deps.platform, deps.dirProvider), action)
+	assert.Equal(t, newSsh(deps.settings, deps.platform, deps.platform.GetDirProvider()), action)
 }
 
 func TestNewFactoryStart(t *testing.T) {
@@ -139,7 +140,7 @@ func TestNewFactoryStart(t *testing.T) {
 	action, err := factory.Create("start")
 	assert.NoError(t, err)
 	assert.NotNil(t, action)
-	assert.Equal(t, newStart(deps.monitor), action)
+	assert.Equal(t, newStart(deps.jobSupervisor), action)
 }
 
 func TestNewFactoryUnmountDisk(t *testing.T) {
@@ -169,10 +170,9 @@ func buildFactory() (
 	deps.notifier = fakenotif.NewFakeNotifier()
 	deps.applier = fakeappl.NewFakeApplier()
 	deps.compiler = fakecomp.NewFakeCompiler()
-	deps.monitor = fakemon.NewFakeMonitor()
+	deps.jobSupervisor = fakejobsuper.NewFakeJobSupervisor()
 	deps.specService = fakeas.NewFakeV1Service()
-	deps.dirProvider = boshdirs.NewDirectoriesProvider("/foo")
-	deps.drainScriptProvider = boshdrain.NewDrainScriptProvider(nil, nil, deps.dirProvider)
+	deps.drainScriptProvider = boshdrain.NewConcreteDrainScriptProvider(nil, nil, deps.platform.GetDirProvider())
 
 	factory = NewFactory(
 		deps.settings,
@@ -182,9 +182,8 @@ func buildFactory() (
 		deps.notifier,
 		deps.applier,
 		deps.compiler,
-		deps.monitor,
+		deps.jobSupervisor,
 		deps.specService,
-		deps.dirProvider,
 		deps.drainScriptProvider,
 	)
 	return

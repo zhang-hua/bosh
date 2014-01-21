@@ -8,12 +8,15 @@ namespace :ci do
 
     desc 'Task that installs a go binary locally and runs go agent tests'
     task :go_agent_tests do
-      mkdir = 'mkdir -p tmp'
-      curl = 'curl https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz > tmp/go.tgz'
-      untar = 'tar xzf tmp/go.tgz -C tmp'
-      go_tests = 'PATH=`pwd`/tmp/go/bin:$PATH go_agent/bin/test'
+      FileUtils.mkdir_p('tmp')
+      sh 'curl https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz > tmp/go.tgz'
+      sh 'tar xzf tmp/go.tgz -C tmp'
 
-      exec "#{mkdir} && #{curl} && #{untar} && #{go_tests}"
+      path = [File.absolute_path('tmp/go/bin'), ENV['PATH']].join(':')
+      env = { 'PATH' => path }
+      sh(env, 'which', 'go')
+      sh(env, 'go_agent/bin/go', 'version')
+      sh(env, 'go_agent/bin/test')
     end
   end
 
@@ -49,43 +52,18 @@ namespace :ci do
     Bosh::Dev::BoshReleasePublisher.setup_for(build).publish
   end
 
-  desc 'Create light stemcell from existing stemcell'
-  def build_light_stemcell(stemcell_filename)
-    stemcell = Bosh::Stemcell::Archive.new(stemcell_filename)
-    light_stemcell = Bosh::Stemcell::Aws::LightStemcell.new(stemcell)
-    light_stemcell.write_archive
-  end
-
-  task :build_light_stemcell, [:stemcell_path] do |_,args|
-    require 'bosh/stemcell/aws/light_stemcell'
-    build_light_stemcell(args.stemcell_path)
-  end
-
-  def build_stemcell(infrastructure_name, operating_system_name, agent_name)
-    require 'bosh/dev/stemcell_builder'
-
-    stemcell_builder = Bosh::Dev::StemcellBuilder.for_candidate_build(
-      infrastructure_name, operating_system_name, agent_name)
-    stemcell_builder.build_stemcell
-  end
-
-  desc 'Build a stemcell for the given :infrastructure, and :operating_system and copy to ./tmp/'
-  task :build_stemcell, [:infrastructure_name, :operating_system_name, :agent_name] do |_, args|
-    stemcell_file = build_stemcell(args.infrastructure_name, args.operating_system_name, args.agent_name)
-
-    mkdir_p('tmp')
-    cp(stemcell_file, File.join('tmp', File.basename(stemcell_file)))
-  end
-
-  desc 'Build a stemcell for the given :infrastructure, and :operating_system and publish to S3'
+  desc 'Build a stemcell for the given :infrastructure, :operating_system, and :agent_name and publish to S3'
   task :publish_stemcell, [:infrastructure_name, :operating_system_name, :agent_name] do |_, args|
     require 'bosh/dev/build'
+    require 'bosh/dev/stemcell_builder'
     require 'bosh/dev/stemcell_publisher'
 
-    stemcell_file = build_stemcell(args.infrastructure_name, args.operating_system_name, args.agent_name)
+    stemcell_builder = Bosh::Dev::StemcellBuilder.for_candidate_build(
+      args.infrastructure_name, args.operating_system_name, args.agent_name)
+    stemcell_path = stemcell_builder.build_stemcell
 
     stemcell_publisher = Bosh::Dev::StemcellPublisher.for_candidate_build
-    stemcell_publisher.publish(stemcell_file)
+    stemcell_publisher.publish(stemcell_path)
   end
 
   task :publish_stemcell_in_vm, [:infrastructure_name, :operating_system_name, :vm_name, :agent_name] do |_, args|
@@ -101,10 +79,10 @@ namespace :ci do
     build.promote_artifacts
   end
 
+  desc 'Promote candidate sha to stable branch outside of the promote_artifacts task'
   task :promote, [:candidate_build_number, :candidate_sha, :stable_branch] do |_, args|
     require 'logger'
     require 'bosh/dev/promoter'
-
     promoter = Bosh::Dev::Promoter.build(args.to_hash)
     promoter.promote
   end

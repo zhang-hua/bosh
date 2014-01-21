@@ -32,7 +32,6 @@ end
 
 group :development do
   gem 'ruby_gntp'
-  gem 'debugger' if RUBY_VERSION < '2.0.0'
   gem 'git-duet', require: false
 end
 
@@ -47,18 +46,24 @@ group :development, :test do
   gemspec path: 'bosh-dev'
   gemspec path: 'bosh-stemcell'
 
+  gem 'rspec', '3.0.0.beta1'
+  gem 'rspec-its'
+  gem 'rspec-instafail'
+
   gem 'rubocop', require: false
   gem 'parallel_tests'
   gem 'rack-test'
   gem 'ci_reporter'
-  gem 'rspec'
-  gem 'rspec-fire'
-  gem 'rspec-instafail'
   gem 'webmock'
   gem 'fakefs'
   gem 'simplecov'
   gem 'simplecov-rcov'
   gem 'vcr'
+
+  # Explicitly do not require serverspec dependency
+  # so that it could be monkey patched in a deterministic way
+  # in `bosh-stemcell/spec/support/serverspec.rb`
+  gem 'specinfra', require: nil
 
   # for director
   gem 'machinist', '~>1.0'

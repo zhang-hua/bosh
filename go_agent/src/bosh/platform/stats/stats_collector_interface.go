@@ -13,22 +13,36 @@ type CpuStats struct {
 	Total uint64
 }
 
-type MemStats struct {
+type Usage struct {
 	Used  uint64
 	Total uint64
 }
 
 type DiskStats struct {
-	Used       uint64
-	Total      uint64
-	InodeUsed  uint64
-	InodeTotal uint64
+	DiskUsage  Usage
+	InodeUsage Usage
 }
 
 type StatsCollector interface {
 	GetCpuLoad() (load CpuLoad, err error)
 	GetCpuStats() (stats CpuStats, err error)
-	GetMemStats() (stats MemStats, err error)
-	GetSwapStats() (stats MemStats, err error)
-	GetDiskStats(devicePath string) (stats DiskStats, err error)
+	GetMemStats() (usage Usage, err error)
+	GetSwapStats() (usage Usage, err error)
+	GetDiskStats(mountedPath string) (stats DiskStats, err error)
+}
+
+func (cpuStats CpuStats) UserPercent() Percentage {
+	return Percentage{cpuStats.User, cpuStats.Total}
+}
+
+func (cpuStats CpuStats) SysPercent() Percentage {
+	return Percentage{cpuStats.Sys, cpuStats.Total}
+}
+
+func (cpuStats CpuStats) WaitPercent() Percentage {
+	return Percentage{cpuStats.Wait, cpuStats.Total}
+}
+
+func (usage Usage) Percent() Percentage {
+	return Percentage{usage.Used, usage.Total}
 }

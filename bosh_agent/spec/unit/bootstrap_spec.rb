@@ -23,6 +23,8 @@ describe Bosh::Agent::Bootstrap do
   end
 
   it 'run configuration steps in a specific order' do
+    Bosh::Agent::Config.stub(configure: true)
+
     @processor.should_receive(:update_iptables).ordered
     @processor.should_receive(:update_passwords).ordered
     @processor.should_receive(:update_agent_id).ordered
@@ -293,7 +295,7 @@ describe Bosh::Agent::Bootstrap do
         it "creates a data/sys/#{dir} directory" do
           path = "/tmp/somedir/data/sys/#{dir}"
           @processor.setup_data_sys
-          expect(File.directory?(path)).to be_true
+          expect(File.directory?(path)).to be(true)
           expect(File.stat(path).gid).to eq(42)
           expect(File.stat(path).mode).to eq(canary_dir_mode)
         end

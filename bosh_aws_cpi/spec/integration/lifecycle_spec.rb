@@ -10,7 +10,12 @@ describe Bosh::AwsCloud::Cloud do
     @subnet_id         = ENV['BOSH_AWS_SUBNET_ID']         || raise("Missing BOSH_AWS_SUBNET_ID")
   end
 
-  let(:cpi) do
+  before { Bosh::Registry::Client.stub(new: double('registry').as_null_object) }
+
+  # Use subject-bang because AWS SDK needs to be reconfigured
+  # with a current test's logger before new AWS::EC2 object is created.
+  # Reconfiguration happens via `AWS.config`.
+  subject!(:cpi) do
     described_class.new(
       'aws' => {
         'region' => 'us-east-1',
@@ -41,7 +46,8 @@ describe Bosh::AwsCloud::Cloud do
       double('delegate', task_checkpoint: nil, logger: Logger.new(STDOUT)))
   end
 
-  before { Bosh::Registry::Client.stub(new: double('registry').as_null_object) }
+  before { Bosh::Clouds::Config.stub(logger: logger) }
+  let(:logger) { Logger.new(STDERR) }
 
   before { @instance_id = nil }
   after  { cpi.delete_vm(@instance_id) if @instance_id }
@@ -71,7 +77,7 @@ describe Bosh::AwsCloud::Cloud do
             [],
             {}
           )
-          vm_metadata = { delete_me: 'please', example: example.full_description }
+          vm_metadata = { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' }
           cpi.set_vm_metadata(instance_id, vm_metadata)
           cpi.delete_vm(instance_id)
           cpi.delete_stemcell(stemcell_id)

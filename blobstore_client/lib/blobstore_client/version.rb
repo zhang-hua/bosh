@@ -1,9 +1,7 @@
-# Copyright (c) 2009-2012 VMware, Inc.
-
 module Bosh
   module Blobstore
     class Client
-      VERSION = '1.5.0.pre.1657'
+      VERSION = '1.1798.0'
     end
   end
 end

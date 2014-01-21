@@ -1,10 +1,14 @@
 # rubocop:disable all
 # => disabling rubocop to preserve original style
 require 'serverspec'
+require 'serverspec/helper/backend'
 require 'pathname'
 
-raise "Unexpected Serverspec version #{Serverspec::VERSION}" unless Serverspec::VERSION == '0.7.10'
-module Serverspec::Backend
+unless Serverspec::VERSION == '0.13.7'
+  raise "Unexpected Serverspec version #{Serverspec::VERSION}"
+end
+
+module SpecInfra::Backend
   class Exec
     # ORIGINAL
     #def run_command(cmd, opts={})
@@ -76,9 +80,11 @@ module Serverspec::Backend
     end
 
     def chroot_cmd(cmd)
+      #quoting command so $ will not be interpreted by shell
+      quoted_cmd = cmd.gsub('$', '\$')
       %Q{
 sudo chroot #{chroot_dir} /bin/bash <<CHROOT_CMD
-  #{cmd} 2>&1; echo #{exit_code_token}\\$?
+  #{quoted_cmd} 2>&1; echo #{exit_code_token}\\$?
 CHROOT_CMD
 }
     end

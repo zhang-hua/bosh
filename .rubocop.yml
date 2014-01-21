@@ -14,7 +14,6 @@ AllCops:
    - bosh-registry/**
    - bosh_vsphere_cpi/**
    - bosh_warden_cpi/**
-   - bosh-director/**
    - bosh-monitor/**
    - bosh-release/**
    - bosh-stemcell/spec/stemcells/centos_spec.rb
@@ -59,3 +58,5 @@ AvoidPerlisms:
 AlignParameters:
   Enabled: false
 
+IfUnlessModifier:
+  Enabled: false # It's nice to be able to use an if on its line

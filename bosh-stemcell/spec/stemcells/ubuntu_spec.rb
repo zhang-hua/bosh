@@ -1,7 +1,6 @@
 require 'spec_helper'
 
 describe 'Ubuntu Stemcell' do
-
   it_behaves_like 'a stemcell'
 
   describe package('apt') do
@@ -71,8 +70,8 @@ describe 'Ubuntu Stemcell' do
       'libssl-dev'           => '0.9.8k-7ubuntu8.15',
       'lsof'                 => '4.81.dfsg.1-1build1',
       'strace'               => '4.5.19-2',
-      'bind9-host'           => '1:9.7.0.dfsg.P1-1ubuntu0.10',
-      'dnsutils'             => '1:9.7.0.dfsg.P1-1ubuntu0.10',
+      'bind9-host'           => '1:9.7.0.dfsg.P1-1ubuntu0.11',
+      'dnsutils'             => '1:9.7.0.dfsg.P1-1ubuntu0.11',
       'tcpdump'              => '4.0.0-6ubuntu3',
       'iputils-arping'       => '3:20071127-2ubuntu1',
       'curl'                 => '7.19.7-1ubuntu1.5',
@@ -204,12 +203,6 @@ describe 'Ubuntu Stemcell' do
       it { should be_file }
       it { should contain 'auto eth0' }
       it { should contain 'iface eth0 inet dhcp' }
-    end
-  end
-
-  context 'installed by rsyslog' do
-    describe file('/etc/init/rsyslog.conf') do
-      it { should contain('/usr/local/sbin/rsyslogd') }
     end
   end
 end

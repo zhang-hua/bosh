@@ -1,5 +1,6 @@
-# Copyright (c) 2009-2012 VMware, Inc.
 $: << File.expand_path('..', __FILE__)
+
+require File.expand_path('../../../spec/shared_spec_helper', __FILE__)
 
 require 'digest/sha1'
 require 'fileutils'
@@ -10,11 +11,11 @@ require 'tmpdir'
 require 'zlib'
 
 require 'archive/tar/minitar'
-require 'machinist/sequel'
 require 'rspec'
+require 'rspec/its'
+require 'machinist/sequel'
 require 'sham'
 require 'support/job_example_group'
-require 'support/rspec_fire'
 require 'support/task_helpers'
 
 RSpec.configure do |config|
@@ -430,5 +431,3 @@ module ReleaseHelper
 
   module_function :create_release_tarball
 end
-
-

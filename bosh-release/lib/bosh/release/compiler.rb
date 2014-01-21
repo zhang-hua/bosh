@@ -29,6 +29,10 @@ module Bosh
         send(@options["command"].to_sym)
       end
 
+      def apply_spec_json
+        File.join(@options["base_dir"], "micro/apply_spec.json")
+      end
+
       def apply_spec
         File.join(@options["base_dir"], "micro/apply_spec.yml")
       end
@@ -90,7 +94,13 @@ module Bosh
 
         # save apply spec
         FileUtils.mkdir_p(File.dirname(apply_spec))
-        File.open(apply_spec, 'w') { |f| f.write(Psych.dump(@spec)) }
+        if @options[:json]
+          File.open(apply_spec_json, 'w') { |f| f.write(@spec.to_json) }
+        else
+          File.open(apply_spec, 'w') { |f| f.write(Psych.dump(@spec)) }
+        end
+
+
 
         @spec["packages"]
       rescue => e
@@ -175,20 +185,19 @@ module Bosh
 
         src = "#{dir}/packages/#{name}.tgz"
         version = package["version"]
-        dependencies = package["dependencies"]
 
         # push source package into blobstore
         file = File.new(src)
         id = @blobstore_client.create(file)
 
-        sha1 = "sha1"
+        sha1 = Digest::SHA1.file(src).hexdigest
         dependencies = {}
         package["dependencies"].each do |name|
           @logger.debug "dependency: #{name} = #{@spec["packages"][name]}"
           dependencies[name] = @spec["packages"][name]
         end
 
-        result = @agent.run_task(:compile_package, id, sha1, name, version, dependencies)
+        result = @agent.run_task(:compile_package, id, sha1, name, "#{version}", dependencies)
         @logger.info("result is #{result}")
 
         # remove source package from blobstore

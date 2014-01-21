@@ -1,16 +1,17 @@
 require 'system/spec_helper'
 
 describe 'with release, stemcell and failed deployment' do
-
   let(:deployment_manifest_bad) do
     use_failing_job
     with_deployment
   end
 
-  before do
-    requirement stemcell
-    requirement release
+  before(:all) do
+    @requirements.requirement(@requirements.stemcell)
+    @requirements.requirement(@requirements.release)
+  end
 
+  before do
     load_deployment_spec
     use_canaries(1)
     use_pool_size(2)
@@ -20,8 +21,6 @@ describe 'with release, stemcell and failed deployment' do
   after do
     bosh("delete deployment #{deployment_name}")
     deployment_manifest_bad.delete
-    cleanup release
-    cleanup stemcell
   end
 
   context 'A brand new deployment' do

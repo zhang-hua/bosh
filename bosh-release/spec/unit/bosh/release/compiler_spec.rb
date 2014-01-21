@@ -52,6 +52,18 @@ describe Bosh::Release::Compiler do
       compiler.compile.should include('director')
     end
 
+    it 'writes the apply spec as json if the json option is set' do
+      compiler = Bosh::Release::Compiler.new(options.merge({json: true}))
+      compiler.compile
+
+      file = File.open(compiler.apply_spec_json)
+      contents = file.read
+
+      apply_spec_hash = JSON.parse(contents)
+      apply_spec_hash["deployment"].should eq("micro")
+      compiler.apply_spec_json.should match(/json\z/)
+    end
+
     context 'when job uses job collocation' do
       let(:manifest) { 'micro_bosh_collo/micro_bosh_collo.yml' }
       let(:release_tar) { 'micro_bosh_collo/micro_bosh_collo.tgz' }
@@ -95,8 +107,11 @@ describe Bosh::Release::Compiler do
     @compiler = Bosh::Release::Compiler.new(options)
     test_agent = double(:agent)
     test_agent.stub(:ping)
+    digester = double('Digest::SHA1')
+    digester.stub(hexdigest: 'fake-sha1')
+    Digest::SHA1.stub(:file).and_return(digester)
     result = {'result' => {'blobstore_id' => 'blah', 'sha1' => 'blah'}}
-    test_agent.stub(:run_task).with(:compile_package, kind_of(String), 'sha1',
+    test_agent.stub(:run_task).with(:compile_package, kind_of(String), 'fake-sha1',
                                     /(ruby|nats|redis|libpq|postgres|blobstore|nginx|director|health_monitor|aws_registry)/,
                                     kind_of(String), kind_of(Hash)).and_return(result)
     Bosh::Agent::Client.should_receive(:create).and_return(test_agent)

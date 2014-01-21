@@ -22,7 +22,6 @@ module Bosh::Dev
         deployer = instance_double('Bosh::Dev::AutomatedDeploy')
         builder.should_receive(:build).with(
           build_target,
-          'fake-micro-target',
           'fake-bosh-target',
           'fake-environment-name',
           'fake-deployment-name',
@@ -70,7 +69,6 @@ module Bosh::Dev
       subject(:deployer) do
         described_class.new(
           build_target,
-          micro_target,
           bosh_target,
           deployment_account,
           artifacts_downloader,
@@ -101,7 +99,6 @@ module Bosh::Dev
         )
       end
 
-      let(:micro_target) { 'https://micro.target.example.com:25555' }
       let(:bosh_target) { 'https://bosh.target.example.com:25555' }
 
       let(:deployment_account) do
@@ -117,25 +114,13 @@ module Bosh::Dev
 
       before do
         Bosh::Dev::DirectorClient.stub(:new).with(
-          uri: micro_target,
-          username: 'fake-username',
-          password: 'fake-password',
-        ).and_return(micro_director_client)
-      end
-
-      let(:micro_director_client) do
-        instance_double('Bosh::Dev::DirectorClient', upload_stemcell: nil, upload_release: nil, deploy: nil)
-      end
-
-      before do
-        Bosh::Dev::DirectorClient.stub(:new).with(
           uri: bosh_target,
           username: 'fake-username',
           password: 'fake-password',
-        ).and_return(bosh_director_client)
+        ).and_return(director_client)
       end
 
-      let(:bosh_director_client) do
+      let(:director_client) do
         instance_double('Bosh::Dev::DirectorClient', upload_stemcell: nil, upload_release: nil, deploy: nil)
       end
 
@@ -155,10 +140,9 @@ module Bosh::Dev
         stemcell_archive = instance_double('Bosh::Stemcell::Archive')
         Bosh::Stemcell::Archive.should_receive(:new).with('/tmp/stemcell.tgz').and_return(stemcell_archive)
 
-        micro_director_client.should_receive(:upload_stemcell).with(stemcell_archive)
-        micro_director_client.should_receive(:upload_release).with('/tmp/release.tgz')
-        micro_director_client.should_receive(:deploy).with('/path/to/manifest.yml')
-        bosh_director_client.should_receive(:upload_stemcell).with(stemcell_archive)
+        director_client.should_receive(:upload_stemcell).with(stemcell_archive)
+        director_client.should_receive(:upload_release).with('/tmp/release.tgz')
+        director_client.should_receive(:deploy).with('/path/to/manifest.yml')
 
         deployer.deploy
       end

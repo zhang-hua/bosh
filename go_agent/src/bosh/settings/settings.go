@@ -1,18 +1,10 @@
 package settings
 
 const (
-	ROOT_USERNAME            = "root"
-	VCAP_USERNAME            = "vcap"
-	VCAP_BASE_DIR            = "/var/vcap"
-	VCAP_ETC_DIR             = VCAP_BASE_DIR + "/bosh/etc"
-	VCAP_STORE_DIR           = VCAP_BASE_DIR + "/store"
-	VCAP_STORE_MIGRATION_DIR = VCAP_BASE_DIR + "/store_migration_target"
-	VCAP_PKG_DIR             = VCAP_BASE_DIR + "/data/packages"
-	VCAP_COMPILE_DIR         = VCAP_BASE_DIR + "/data/compile"
-	VCAP_MONIT_JOBS_DIR      = VCAP_BASE_DIR + "/monit/job"
-	VCAP_JOBS_DIR            = VCAP_BASE_DIR + "/jobs"
-	ADMIN_GROUP              = "admin"
-	EPHEMERAL_USER_PREFIX    = "bosh_"
+	ROOT_USERNAME         = "root"
+	VCAP_USERNAME         = "vcap"
+	ADMIN_GROUP           = "admin"
+	EPHEMERAL_USER_PREFIX = "bosh_"
 )
 
 type Settings struct {
@@ -26,16 +18,13 @@ type Settings struct {
 	Vm        Vm
 }
 
-type BlobstoreType string
-
 const (
-	BlobstoreTypeDav   BlobstoreType = "dav"
-	BlobstoreTypeDummy               = "dummy"
-	BlobstoreTypeS3                  = "s3"
+	BlobstoreTypeDummy = "dummy"
+	BlobstoreTypeLocal = "local"
 )
 
 type Blobstore struct {
-	Type    BlobstoreType `json:"provider"`
+	Type    string `json:"provider"`
 	Options map[string]string
 }
 
@@ -112,6 +101,15 @@ func (n Networks) DefaultIp() (ip string, found bool) {
 
 	if ip != "" {
 		found = true
+	}
+	return
+}
+
+func (n Networks) Ips() (ips []string) {
+	for _, net := range n {
+		if net.Ip != "" {
+			ips = append(ips, net.Ip)
+		}
 	}
 	return
 }

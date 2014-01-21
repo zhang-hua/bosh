@@ -5,7 +5,10 @@ import (
 	fakecmd "bosh/platform/commands/fakes"
 	boshstats "bosh/platform/stats"
 	fakestats "bosh/platform/stats/fakes"
+	boshvitals "bosh/platform/vitals"
+	fakevitals "bosh/platform/vitals/fakes"
 	boshsettings "bosh/settings"
+	boshdir "bosh/settings/directories"
 	boshsys "bosh/system"
 	fakesys "bosh/system/fakes"
 )
@@ -15,6 +18,8 @@ type FakePlatform struct {
 	Runner             *fakesys.FakeCmdRunner
 	FakeStatsCollector *fakestats.FakeStatsCollector
 	FakeCompressor     *fakecmd.FakeCompressor
+	FakeCopier         *fakecmd.FakeCopier
+	FakeVitalsService  *fakevitals.FakeService
 
 	SetupRuntimeConfigurationWasInvoked bool
 
@@ -57,7 +62,9 @@ func NewFakePlatform() (platform *FakePlatform) {
 	platform.Fs = &fakesys.FakeFileSystem{}
 	platform.Runner = &fakesys.FakeCmdRunner{}
 	platform.FakeStatsCollector = &fakestats.FakeStatsCollector{}
-	platform.FakeCompressor = &fakecmd.FakeCompressor{}
+	platform.FakeCompressor = fakecmd.NewFakeCompressor()
+	platform.FakeCopier = fakecmd.NewFakeCopier()
+	platform.FakeVitalsService = fakevitals.NewFakeService()
 
 	platform.AddUserToGroupsGroups = make(map[string][]string)
 	platform.SetupSshPublicKeys = make(map[string]string)
@@ -79,6 +86,18 @@ func (p *FakePlatform) GetStatsCollector() (collector boshstats.StatsCollector) 
 
 func (p *FakePlatform) GetCompressor() (compressor boshcmd.Compressor) {
 	return p.FakeCompressor
+}
+
+func (p *FakePlatform) GetCopier() (copier boshcmd.Copier) {
+	return p.FakeCopier
+}
+
+func (p *FakePlatform) GetDirProvider() (dirProvider boshdir.DirectoriesProvider) {
+	return boshdir.NewDirectoriesProvider("/var/vcap")
+}
+
+func (p *FakePlatform) GetVitalsService() (service boshvitals.Service) {
+	return p.FakeVitalsService
 }
 
 func (p *FakePlatform) SetupRuntimeConfiguration() (err error) {

@@ -3,7 +3,9 @@ package platform
 import (
 	boshcmd "bosh/platform/commands"
 	boshstats "bosh/platform/stats"
+	boshvitals "bosh/platform/vitals"
 	boshsettings "bosh/settings"
+	boshdir "bosh/settings/directories"
 	boshsys "bosh/system"
 )
 
@@ -12,6 +14,9 @@ type Platform interface {
 	GetRunner() (runner boshsys.CmdRunner)
 	GetStatsCollector() (statsCollector boshstats.StatsCollector)
 	GetCompressor() (compressor boshcmd.Compressor)
+	GetCopier() (copier boshcmd.Copier)
+	GetDirProvider() (dirProvider boshdir.DirectoriesProvider)
+	GetVitalsService() (service boshvitals.Service)
 
 	SetupRuntimeConfiguration() (err error)
 	CreateUser(username, password, basePath string) (err error)

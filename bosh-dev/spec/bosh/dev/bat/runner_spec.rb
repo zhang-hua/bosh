@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'logger'
 require 'bosh/dev/bat/runner'
 require 'bosh/dev/bat_helper'
 require 'bosh/dev/bat/director_address'
@@ -20,10 +21,12 @@ module Bosh::Dev::Bat
         microbosh_deployment_manifest,
         bat_deployment_manifest,
         microbosh_deployment_cleaner,
+        logger,
       )
     end
 
     let(:env) { {} }
+    let(:logger) { Logger.new('/dev/null') }
 
     before { FileUtils.mkdir_p(bat_helper.micro_bosh_deployment_dir) }
     let(:bat_helper) do
@@ -85,64 +88,54 @@ module Bosh::Dev::Bat
         subject.deploy_microbosh_and_run_bats
       end
 
-      it 'uploads the bosh stemcell to the micro' do
-        bosh_cli_session.should_receive(:run_bosh).with(
-          'upload stemcell fake_bosh_stemcell_path', debug_on_fail: true)
-        subject.deploy_microbosh_and_run_bats
-      end
-
       it 'runs bats' do
         subject.should_receive(:run_bats)
         subject.deploy_microbosh_and_run_bats
-      end
-
-      def self.it_cleans_up_after_rake_task(ignore_error = false)
-        it 'deletes the bat deployment, stemcell and then micro' do
-          bosh_cli_session
-            .should_receive(:run_bosh)
-            .with('delete deployment bat', ignore_failures: true)
-            .ordered
-
-          bosh_cli_session.should_receive(:run_bosh)
-            .with('delete stemcell stemcell-name 6', ignore_failures: true)
-            .ordered
-
-          bosh_cli_session
-            .should_receive(:run_bosh)
-            .with('micro delete', ignore_failures: true)
-            .ordered
-
-          begin
-            subject.deploy_microbosh_and_run_bats
-          rescue
-            raise unless ignore_error
-          end
-        end
-      end
-
-      context 'when running bats does not raise an error' do
-        before { subject.stub(:run_bats) }
-        it_cleans_up_after_rake_task
-
-        it 'does not raise an error' do
-          expect { subject.deploy_microbosh_and_run_bats }.to_not raise_error
-        end
-      end
-
-      context 'when running bats raises an error' do
-        before { subject.stub(:run_bats).and_raise(error) }
-        let(:error) { RuntimeError.new('error') }
-        it_cleans_up_after_rake_task(true)
-
-        it 're-raises bats error' do
-          expect { subject.deploy_microbosh_and_run_bats }.to raise_error(error)
-        end
       end
     end
 
     describe '#run_bats' do
       before { Rake::Task.stub(:[]).with('bat').and_return(bat_rake_task) }
       let(:bat_rake_task) { double("Rake::Task['bat']", invoke: nil) }
+
+      describe 'targetting the micro' do
+        def self.it_targets_micro(username, password)
+          it 'targets the micro with the correct username and password' do
+            expect(bosh_cli_session).to receive(:run_bosh).with(
+              "-u #{username} -p #{password} target director-hostname"
+            )
+            subject.run_bats
+          end
+        end
+
+        context 'when the environment does not specify a username or password' do
+          it_targets_micro 'admin', 'admin'
+        end
+
+        context 'when the environment specifies a username' do
+          before { env['BOSH_USER'] = 'username' }
+          it_targets_micro 'username', 'admin'
+        end
+
+        context 'when the environment specifies a password' do
+          before { env['BOSH_PASSWORD'] = 'password' }
+          it_targets_micro 'admin', 'password'
+        end
+
+        context 'when the environment specifies both a password and password' do
+          before do
+            env['BOSH_USER'] = 'username'
+            env['BOSH_PASSWORD'] = 'password'
+          end
+          it_targets_micro 'username', 'password'
+        end
+
+        it 'targets the director before writing the bosh manifest' do
+          expect(bosh_cli_session).to receive(:run_bosh).with(/target director-hostname/).ordered
+          expect(bat_deployment_manifest).to receive(:write).with(no_args).ordered
+          subject.run_bats
+        end
+      end
 
       it 'generates a bat manifest' do
         bat_deployment_manifest.should_receive(:write) do

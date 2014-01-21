@@ -1,5 +1,3 @@
-# Copyright (c) 2009-2012 VMware, Inc.
-
 require 'spec_helper'
 
 describe Bosh::Cli::Client::Director do
@@ -63,6 +61,8 @@ describe Bosh::Cli::Client::Director do
   end
 
   describe 'API calls' do
+    let(:task_number) { 232 }
+
     describe '#list_vms' do
       let(:http_client) { double('HTTPClient').as_null_object }
       let(:response) { double('Response', body: response_body, code: 200, headers: {}) }
@@ -319,42 +319,33 @@ describe Bosh::Cli::Client::Director do
 
     it 'gets task state' do
       @director.should_receive(:get).
-        with('/tasks/232').
+        with("/tasks/#{task_number}").
         and_return([200, JSON.generate({ 'state' => 'done' })])
-      @director.get_task_state(232).should == 'done'
-    end
-
-    it 'whines on missing task' do
-      @director.should_receive(:get).
-        with('/tasks/232').
-        and_return([404, 'Not Found'])
-      lambda {
-        @director.get_task_state(232).should
-      }.should raise_error(Bosh::Cli::MissingTask)
+      @director.get_task_state(task_number).should == 'done'
     end
 
     it 'gets task output' do
       @director.should_receive(:get).
-        with('/tasks/232/output', nil,
+        with("/tasks/#{task_number}/output", nil,
              nil, { 'Range' => 'bytes=42-' }).
         and_return([206, 'test', { :content_range => 'bytes 42-56/100' }])
-      @director.get_task_output(232, 42).should == ['test', 57]
+      @director.get_task_output(task_number, 42).should == ['test', 57]
     end
 
     it "doesn't set task output body and new offset if there's a byte range unsatisfiable response" do
       @director.should_receive(:get).
-        with('/tasks/232/output', nil,
+        with("/tasks/#{task_number}/output", nil,
              nil, { 'Range' => 'bytes=42-' }).
         and_return([416, 'Byte range unsatisfiable', { :content_range => 'bytes */100' }])
-      @director.get_task_output(232, 42).should == [nil, nil]
+      @director.get_task_output(task_number, 42).should == [nil, nil]
     end
 
     it "doesn't set task output new offset if it wasn't a partial response" do
       @director.should_receive(:get).
-        with('/tasks/232/output', nil, nil,
+        with("/tasks/#{task_number}/output", nil, nil,
              { 'Range' => 'bytes=42-' }).
         and_return([200, 'test'])
-      @director.get_task_output(232, 42).should == ['test', nil]
+      @director.get_task_output(task_number, 42).should == ['test', nil]
     end
 
     it 'know how to find time difference with director' do
@@ -404,6 +395,52 @@ describe Bosh::Cli::Client::Director do
       @director.should_receive(:request_and_track).
         with(:delete, '/deployments/foo/snapshots/snap0a', {}).and_return(true)
       @director.delete_snapshot('foo', 'snap0a')
+    end
+
+    context 'when director returns 404' do
+      let(:http_client) { double('HTTPClient').as_null_object }
+      let(:response) { double('Response', body: 'Not Found', code: 404, headers: {}) }
+      let(:request_headers) { { 'Authorization' => 'Basic dXNlcjpwYXNz' } }
+      let(:endpoint) { '/bad_endpoint' }
+      before do
+        HTTPClient.stub(new: http_client)
+        allow(http_client).to receive(:request).
+          with(:get, "https://127.0.0.1:8080#{endpoint}", body: anything, header: request_headers).
+          and_return(response)
+      end
+
+      let(:target_name) { 'FAKE-DIRECTOR' }
+      let(:info_response) { double('Response', body: 'info response body', code: 200, headers: {}) }
+      before do
+        JSON.stub(:parse).with('info response body').and_return({'name' => target_name})
+        JSON.stub(:parse).with('Not Found').and_return({'name' => target_name})
+
+        allow(http_client).to receive(:request).
+          with(:get, "https://127.0.0.1:8080/info", body: anything, header: anything).
+          and_return(info_response)
+      end
+
+      context 'when requesting tasks' do
+        it 'raises error' do
+          expect(@director).to receive(:get).
+            with("/tasks/#{task_number}").
+            and_return([404, 'Not Found'])
+          expect {
+            @director.get_task_state(task_number)
+          }.to raise_error(Bosh::Cli::MissingTask)
+        end
+      end
+
+      context 'when requesting anything else' do
+        it 'should raise error suggesting director upgrade' do
+          expect {
+            @director.get(endpoint)
+          }.to raise_error(Bosh::Cli::ResourceNotFound,
+            "The #{target_name} bosh director doesn't understand the following " +
+            "API call: #{endpoint}. The bosh deployment may need to be upgraded."
+          )
+        end
+      end
     end
   end
 

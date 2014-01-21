@@ -23,14 +23,21 @@ chmod +x /etc/sv/monit/run /etc/sv/monit/log/run
 ln -s /etc/sv/monit /etc/service/monit
 "
 
+# alerts for monit config
+cp -a $dir/assets/alerts.monitrc $chroot/var/vcap/monit/alerts.monitrc
+
 cd $assets_dir/go_agent
 
 bin/build
 
 mv out/bosh-agent $chroot/var/vcap/bosh/bin/
 cp src/bosh-agent-rc $chroot/var/vcap/bosh/bin/
+mv out/dav-cli $chroot/var/vcap/bosh/bin/bosh-blobstore-dav
 chmod +x $chroot/var/vcap/bosh/bin/bosh-agent
 chmod +x $chroot/var/vcap/bosh/bin/bosh-agent-rc
+chmod +x $chroot/var/vcap/bosh/bin/bosh-blobstore-dav
+
+cp src/bosh/mbus/agent.{cert,key} $chroot/var/vcap/bosh/
 
 # setup additional permissions
 

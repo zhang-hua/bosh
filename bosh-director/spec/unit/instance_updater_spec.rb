@@ -76,7 +76,7 @@ module Bosh::Director
              network_settings: double('NetworkSettings'),
              disk_size: disk_size)
     end
-    let(:cloud) { double('cloud') }
+    let(:cloud) { instance_double('Bosh::Cloud') }
 
     let(:agent_client) { double('Bosh::Director::AgentClient') }
 
@@ -633,23 +633,35 @@ module Bosh::Director
         end
       end
 
-      it 'should clean up a VM if creation fails' do
+      it 'should clean up a VM if agent fails to respond' do
+        agent_client.stub(:wait_until_ready).with(no_args).and_raise(RuntimeError)
+        new_vm = Models::Vm.make(cid: 'new vm cid')
+        VmCreator.stub(:create).and_return(new_vm)
+        cloud.should_receive(:delete_vm).with('new vm cid')
+        new_vm.should_receive(:destroy).with(no_args)
+
         expect {
-          VmCreator.should_receive(:create).
-            with(deployment_model,
-                 stemcell_model,
-                 resource_pool.cloud_properties,
-                 instance.network_settings,
-                 [persistent_disk_model.disk_cid, new_disk_id],
-                 resource_pool.env).
-            and_raise(RuntimeError)
-
-          cloud.should_receive(:delete_vm).with(vm_model.cid)
-          instance.model.vm.should_receive(:destroy)
-
           subject.create_vm(new_disk_id)
-          expect(instance.model.vm).to be_nil
         }.to raise_error(RuntimeError)
+
+        expect(instance.model.vm).to be_nil
+      end
+
+      it 'should clean up a VM if instance model fails to save' do
+        # too bad "allow-to" doesn't work yet: the second stub would override the first
+        expect(instance.model).to receive(:save).once.and_raise(RuntimeError)
+        expect(instance.model).to receive(:save).once
+
+        new_vm = Models::Vm.make(cid: 'new vm cid')
+        VmCreator.stub(:create).and_return(new_vm)
+        cloud.should_receive(:delete_vm).with('new vm cid')
+        new_vm.should_receive(:destroy).with(no_args)
+
+        expect {
+          subject.create_vm(new_disk_id)
+        }.to raise_error(RuntimeError)
+
+        expect(instance.model.vm).to be_nil
       end
     end
 
@@ -802,6 +814,19 @@ module Bosh::Director
           instance.should_receive(:current_state=).with(instance_state)
 
           subject.update_resource_pool(new_disk_cid)
+        end
+
+        context 'when new vm creation fails' do
+          it 'does not try to delete the original vm multiple times' do
+            agent_client.stub(:get_state).and_return(instance_state)
+
+            expect(cloud).to receive(:delete_vm).exactly(1).times
+            cloud.stub(:create_vm).and_raise('create vm failure')
+
+            expect {
+              subject.update_resource_pool(new_disk_cid)
+            }.to raise_error(/create vm failure/)
+          end
         end
       end
 
