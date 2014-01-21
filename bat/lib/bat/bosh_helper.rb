@@ -38,10 +38,11 @@ module Bat
     end
 
     def warden?
-      info['cpi'] == 'warden'
+      @bosh_api.info['cpi'] == 'warden'
     end
 
     def compiled_package_cache?
+      info = @bosh_api.info
       info['features'] && info['features']['compiled_package_cache']
     end
 
