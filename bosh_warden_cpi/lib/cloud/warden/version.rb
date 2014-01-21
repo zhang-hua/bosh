@@ -1,5 +1,5 @@
 module Bosh
   module WardenCloud
-    VERSION = '1.5.0.pre.3'
+    VERSION = '1.1798.0'
   end
 end

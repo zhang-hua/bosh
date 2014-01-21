@@ -1,5 +1,6 @@
 require File.dirname(__FILE__) + "/lib/cloud/warden/version"
-version = File.read(File.expand_path('../../BOSH_VERSION', __FILE__)).strip
+
+version = Bosh::WardenCloud::VERSION
 
 Gem::Specification.new do |s|
   s.name         = "bosh_warden_cpi"
