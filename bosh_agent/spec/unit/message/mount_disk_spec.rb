@@ -100,7 +100,7 @@ module Bosh::Agent
             platform.stub(:is_disk_blockdev?).and_return(false)
             platform.should_receive(:mount_partition).with("/dev/sda", "/var/vcap/store")
             mount_disk_handler.mount
-            expect(File.directory?('/var/vcap/store')).to be_true
+            expect(File.directory?('/var/vcap/store')).to be(true)
           end
         end
 
