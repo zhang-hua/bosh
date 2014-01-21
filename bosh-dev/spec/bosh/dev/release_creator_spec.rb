@@ -36,7 +36,7 @@ module Bosh::Dev
 
         cli_session
           .should_receive(:run_bosh)
-          .with('create release --force --final --with-tarball')
+          .with('create release --force --with-tarball')
           .ordered
           .and_return(create_release_output)
 
