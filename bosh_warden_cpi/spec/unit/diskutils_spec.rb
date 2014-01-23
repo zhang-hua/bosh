@@ -23,7 +23,7 @@ describe Bosh::WardenCloud::DiskUtils do
       mock_sh("tar -C #{@stemcell_root} -xzf #{image_path} 2>&1", true)
       @disk_util.stemcell_unpack(image_path, 'stemcell-uuid')
       Dir.chdir(@stemcell_path) do
-        Dir.glob('*').should have(1).items
+        expect(Dir.glob('*').size).to eq(1)
         Dir.glob('*').should include('stemcell-uuid')
       end
     end
@@ -41,7 +41,7 @@ describe Bosh::WardenCloud::DiskUtils do
       Dir.chdir(@stemcell_path) do
         mock_sh("tar -C #{@stemcell_root} -xzf #{image_path} 2>&1", true)
         @disk_util.stemcell_unpack(image_path, 'stemcell-uuid')
-        Dir.glob('*').should have(1).items
+        expect(Dir.glob('*').size).to eq(1)
         Dir.glob('*').should include('stemcell-uuid')
         mock_sh("rm -rf #{@stemcell_root}", true)
         @disk_util.stemcell_delete('stemcell-uuid')
@@ -55,7 +55,7 @@ describe Bosh::WardenCloud::DiskUtils do
       @disk_util.create_disk('disk-uuid', 1)
       Dir.chdir(@disk_root) do
         image = 'disk-uuid.img'
-        Dir.glob('*').should have(1).items
+        expect(Dir.glob('*').size).to eq(1)
         Dir.glob('*').should include(image)
         File.stat(image).size.should == 1 << 20
       end
@@ -93,7 +93,7 @@ describe Bosh::WardenCloud::DiskUtils do
 
     it 'can delete disk' do
       Dir.chdir(@disk_root) do
-        Dir.glob('*').should have(1).items
+        expect(Dir.glob('*').size).to eq(1)
         Dir.glob('*').should include('disk-uuid.img')
         @disk_util.delete_disk('disk-uuid')
         Dir.glob('*').should be_empty
