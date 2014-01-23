@@ -12,8 +12,10 @@ describe Bosh::WardenCloud::Cloud do
     @stemcell_path =  Dir.mktmpdir('stemcell-disk')
     @stemcell_root = File.join(@stemcell_path, DEFAULT_STEMCELL_ID)
     @disk_util = double('DiskUtils')
+    @warden_client = double(Warden::Client)
     @disk_util.stub(:stemcell_path).and_return(@stemcell_root)
     Bosh::WardenCloud::DiskUtils.stub(:new).with(@disk_root, @stemcell_path, 'ext4').and_return(@disk_util)
+    Warden::Client.stub(:new).and_return(@warden_client)
 
     cloud_options = {
         'disk' => {
@@ -34,11 +36,8 @@ describe Bosh::WardenCloud::Cloud do
     }
     @cloud = Bosh::Clouds::Provider.create(:warden, cloud_options)
 
-    [:connect, :disconnect].each do |op|
-      Warden::Client.any_instance.stub(op) do
-        # no-op
-      end
-    end
+    @warden_client.stub(:connect) {}
+    @warden_client.stub(:disconnect) {}
   end
 
   after :each do
@@ -56,7 +55,7 @@ describe Bosh::WardenCloud::Cloud do
     before :each do
       @cloud.stub(:uuid).with('vm') { DEFAULT_HANDLE }
       Dir.mkdir(@stemcell_root)
-      Warden::Client.any_instance.stub(:call) do |req|
+      @warden_client.stub(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::CreateRequest
@@ -78,7 +77,6 @@ describe Bosh::WardenCloud::Cloud do
             env['mbus'].should_not == nil
             env['ntp'].should be_instance_of Array
             env['blobstore'].should be_instance_of Hash
-            res = req.create_response
           when Warden::Protocol::RunRequest
             # Ignore
           when Warden::Protocol::SpawnRequest
@@ -132,13 +130,13 @@ describe Bosh::WardenCloud::Cloud do
       else
         raise 'Expected FakeError'
       end
-      @destroy_called.should be_true
+      @destroy_called.should be(true)
     end
   end
 
   context 'delete_vm' do
     it 'can delete vm' do
-      Warden::Client.any_instance.stub(:call) do |req|
+      @warden_client.stub(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::DestroyRequest
@@ -166,7 +164,7 @@ describe Bosh::WardenCloud::Cloud do
     end
 
     it 'can delete a vm with disk attached' do
-      Warden::Client.any_instance.stub(:call) do |req|
+      @warden_client.stub(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::DestroyRequest
@@ -187,7 +185,7 @@ describe Bosh::WardenCloud::Cloud do
 
   context 'has_vm' do
     before :each do
-      Warden::Client.any_instance.stub(:call) do |req|
+      @warden_client.stub(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::ListRequest

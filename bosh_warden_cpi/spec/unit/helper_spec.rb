@@ -3,6 +3,14 @@ require 'spec_helper'
 describe Bosh::WardenCloud::Helpers do
   include Bosh::WardenCloud::Helpers
 
+  before :each do
+    @warden_client = double('Warden::Client')
+    Warden::Client.stub(:new).and_return(@warden_client)
+
+    @warden_client.stub(:connect) {}
+    @warden_client.stub(:disconnect) {}
+  end
+
   context 'uuid' do
     it 'can generate the correct uuid' do
       uuid('disk').should start_with 'disk'
@@ -23,12 +31,7 @@ describe Bosh::WardenCloud::Helpers do
 
   context 'generate and get agent env' do
     before :each do
-      [:connect, :disconnect].each do |op|
-        Warden::Client.any_instance.stub(op) do
-          # no-op
-        end
-      end
-      Warden::Client.any_instance.stub(:call) do |req|
+      @warden_client.stub(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::RunRequest
@@ -61,12 +64,7 @@ describe Bosh::WardenCloud::Helpers do
 
   context 'set agent env' do
     before :each do
-      [:connect, :disconnect].each do |op|
-        Warden::Client.any_instance.stub(op) do
-          # no-op
-        end
-      end
-      Warden::Client.any_instance.stub(:call) do |req|
+      @warden_client.stub(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::RunRequest
@@ -88,12 +86,7 @@ describe Bosh::WardenCloud::Helpers do
 
   context 'start agent' do
     before :each do
-      [:connect, :disconnect].each do |op|
-        Warden::Client.any_instance.stub(op) do
-          # no-op
-        end
-      end
-      Warden::Client.any_instance.stub(:call) do |req|
+      @warden_client.stub(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::SpawnRequest
