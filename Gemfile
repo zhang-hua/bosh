@@ -46,8 +46,8 @@ group :development, :test do
   gemspec path: 'bosh-dev'
   gemspec path: 'bosh-stemcell'
 
-  gem 'rspec'
-  gem 'rspec-fire'
+  gem 'rspec', '3.0.0.beta1'
+  gem 'rspec-its'
   gem 'rspec-instafail'
 
   gem 'rubocop', require: false
