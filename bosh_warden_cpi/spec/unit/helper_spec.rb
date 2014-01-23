@@ -81,7 +81,7 @@ describe Bosh::WardenCloud::Helpers do
     end
 
     it 'generate a random file in tmp and mv to agent_setting_file' do
-      Kernel.stub!(:rand).and_return(100)
+      Kernel.stub(:rand).and_return(100)
       set_agent_env('fake_handle', {})
     end
   end
