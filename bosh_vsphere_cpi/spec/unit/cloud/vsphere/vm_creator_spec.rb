@@ -2,6 +2,19 @@ require 'spec_helper'
 require 'cloud/vsphere/vm_creator'
 
 describe VSphereCloud::VmCreator do
+  describe '.build' do
+    it 'injects the placer, memory size, disk size, number of cpu, vsphere client, logger and the cpi into the VmCreator instance' do
+      resources = double('resources')
+      client = double('client')
+      logger = double('logger')
+      cpi = double('cpi')
+      vm_creator = double('vm creator')
+      expect(described_class).to receive(:new).with(resources, client, logger, cpi).and_return(vm_creator)
+
+      expect(described_class.build(resources, client, logger, cpi)).to eq(vm_creator)
+    end
+  end
+
   describe '#create' do
     let(:placer) { double('placer') }
     let(:vsphere_client) { instance_double('VSphereCloud::Client') }

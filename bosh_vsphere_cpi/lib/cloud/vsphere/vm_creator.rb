@@ -1,5 +1,9 @@
 module VSphereCloud
   class VmCreator
+    def self.build(resources, client, logger, cpi)
+      new(resources, client, logger, cpi)
+    end
+
     def initialize(resources, client, logger, cpi)
       @resources = resources
       @client = client
