@@ -10,7 +10,7 @@ describe Bosh::WardenCloud::DiskUtils do
     @stemcell_path =  Dir.mktmpdir('stemcell-path')
     @stemcell_root = File.join(@stemcell_path, 'stemcell-uuid')
     @disk_util =  described_class.new(@disk_root, @stemcell_path, 'ext4')
-    @disk_util.stub(:sleep) {}
+    allow(@disk_util).to receive(:sleep) {}
   end
 
   after :each do
@@ -75,7 +75,7 @@ describe Bosh::WardenCloud::DiskUtils do
     end
 
     it 'should clean up when create disk failed' do
-      @disk_util.stub(:image_path) { '/path/not/exist' }
+      allow(@disk_util).to receive(:image_path) { '/path/not/exist' }
       expect {
         @disk_util.create_disk('disk-uuid', 1)
       }.to raise_error
@@ -129,13 +129,13 @@ describe Bosh::WardenCloud::DiskUtils do
 
     it 'will sudo invoke umount to detach loop device' do
       mock_sh("umount #{@vm_id_path}", true)
-      @disk_util.stub(:mount_entry).and_return('nop', nil)
+      allow(@disk_util).to receive(:mount_entry).and_return('nop', nil)
       @disk_util.umount_disk(@vm_id_path)
     end
 
     it 'will retry umount for detach disk' do
       mock_sh("umount #{@vm_id_path}", true, Bosh::WardenCloud::DiskUtils::UMOUNT_GUARD_RETRIES + 1, false)
-      @disk_util.stub(:mount_entry).and_return('nop')
+      allow(@disk_util).to receive(:mount_entry).and_return('nop')
 
       expect {
         @disk_util.umount_disk(@vm_id_path)

@@ -5,10 +5,10 @@ describe Bosh::WardenCloud::Helpers do
 
   before :each do
     @warden_client = double('Warden::Client')
-    Warden::Client.stub(:new).and_return(@warden_client)
+    allow(Warden::Client).to receive(:new).and_return(@warden_client)
 
-    @warden_client.stub(:connect) {}
-    @warden_client.stub(:disconnect) {}
+    allow(@warden_client).to receive(:connect) {}
+    allow(@warden_client).to receive(:disconnect) {}
   end
 
   context 'uuid' do
@@ -31,7 +31,7 @@ describe Bosh::WardenCloud::Helpers do
 
   context 'generate and get agent env' do
     before :each do
-      @warden_client.stub(:call) do |req|
+      allow(@warden_client).to receive(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::RunRequest
@@ -64,7 +64,7 @@ describe Bosh::WardenCloud::Helpers do
 
   context 'set agent env' do
     before :each do
-      @warden_client.stub(:call) do |req|
+      allow(@warden_client).to receive(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::RunRequest
@@ -79,14 +79,14 @@ describe Bosh::WardenCloud::Helpers do
     end
 
     it 'generate a random file in tmp and mv to agent_setting_file' do
-      Kernel.stub(:rand).and_return(100)
+      allow(Kernel).to receive(:rand).and_return(100)
       set_agent_env('fake_handle', {})
     end
   end
 
   context 'start agent' do
     before :each do
-      @warden_client.stub(:call) do |req|
+      allow(@warden_client).to receive(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::SpawnRequest
