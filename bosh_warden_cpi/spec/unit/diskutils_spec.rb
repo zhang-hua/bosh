@@ -24,7 +24,7 @@ describe Bosh::WardenCloud::DiskUtils do
       @disk_util.stemcell_unpack(image_path, 'stemcell-uuid')
       Dir.chdir(@stemcell_path) do
         expect(Dir.glob('*').size).to eq(1)
-        Dir.glob('*').should include('stemcell-uuid')
+        expect(Dir.glob('*')).to include('stemcell-uuid')
       end
     end
 
@@ -42,7 +42,7 @@ describe Bosh::WardenCloud::DiskUtils do
         mock_sh("tar -C #{@stemcell_root} -xzf #{image_path} 2>&1", true)
         @disk_util.stemcell_unpack(image_path, 'stemcell-uuid')
         expect(Dir.glob('*').size).to eq(1)
-        Dir.glob('*').should include('stemcell-uuid')
+        expect(Dir.glob('*')).to include('stemcell-uuid')
         mock_sh("rm -rf #{@stemcell_root}", true)
         @disk_util.stemcell_delete('stemcell-uuid')
       end
@@ -56,10 +56,10 @@ describe Bosh::WardenCloud::DiskUtils do
       Dir.chdir(@disk_root) do
         image = 'disk-uuid.img'
         expect(Dir.glob('*').size).to eq(1)
-        Dir.glob('*').should include(image)
-        File.stat(image).size.should == 1 << 20
+        expect(Dir.glob('*')).to include(image)
+        expect(File.stat(image).size).to eq(1 << 20)
       end
-      @disk_util.disk_exist?('disk-uuid').should == true
+      expect(@disk_util.disk_exist?('disk-uuid')).to be true
     end
 
     it 'should raise error if size is 0' do
@@ -80,7 +80,7 @@ describe Bosh::WardenCloud::DiskUtils do
         @disk_util.create_disk('disk-uuid', 1)
       }.to raise_error
       Dir.chdir(@disk_root) do
-        Dir.glob('*').should be_empty
+        expect(Dir.glob('*')).to be_empty
       end
     end
   end
@@ -94,21 +94,21 @@ describe Bosh::WardenCloud::DiskUtils do
     it 'can delete disk' do
       Dir.chdir(@disk_root) do
         expect(Dir.glob('*').size).to eq(1)
-        Dir.glob('*').should include('disk-uuid.img')
+        expect(Dir.glob('*')).to include('disk-uuid.img')
         @disk_util.delete_disk('disk-uuid')
-        Dir.glob('*').should be_empty
+        expect(Dir.glob('*')).to be_empty
       end
     end
   end
 
   context 'disk exist' do
     it 'should detect non-existed disk' do
-      @disk_util.disk_exist?('12345').should == false
+      expect(@disk_util.disk_exist?('12345')).to be false
     end
 
     it 'should return true for existed disk' do
       @disk_util.create_disk('disk-uuid', 1)
-      @disk_util.disk_exist?('disk-uuid').should == true
+      expect(@disk_util.disk_exist?('disk-uuid')).to be true
     end
   end
 
