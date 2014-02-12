@@ -47,7 +47,7 @@ describe Bosh::WardenCloud::Cloud do
 
   context 'initialize' do
     it 'can be created using Bosh::Clouds::Provider' do
-      @cloud.should be_an_instance_of(Bosh::Clouds::Warden)
+      expect(@cloud).to be_an_instance_of(Bosh::Clouds::Warden)
     end
   end
 
@@ -59,31 +59,31 @@ describe Bosh::WardenCloud::Cloud do
         res = req.create_response
         case req
           when Warden::Protocol::CreateRequest
-            req.network.should == '1.1.1.1'
-            req.rootfs.should == @stemcell_root
-            req.bind_mounts[0].src_path.should =~ /#{@disk_root}\/bind_mount_points/
-            req.bind_mounts[1].src_path.should =~ /#{@disk_root}\/ephemeral_mount_point/
-            req.bind_mounts[0].dst_path.should == '/warden-cpi-dev'
-            req.bind_mounts[1].dst_path.should == '/var/vcap/data'
-            req.bind_mounts[0].mode.should == Warden::Protocol::CreateRequest::BindMount::Mode::RW
-            req.bind_mounts[1].mode.should == Warden::Protocol::CreateRequest::BindMount::Mode::RW
+            expect(req.network).to eq('1.1.1.1')
+            expect(req.rootfs).to equal(@stemcell_root)
+            expect(req.bind_mounts[0].src_path).to match(/#{@disk_root}\/bind_mount_points/)
+            expect(req.bind_mounts[1].src_path).to match(/#{@disk_root}\/ephemeral_mount_point/)
+            expect(req.bind_mounts[0].dst_path).to eq('/warden-cpi-dev')
+            expect(req.bind_mounts[1].dst_path).to eq('/var/vcap/data')
+            expect(req.bind_mounts[0].mode).to eq(Warden::Protocol::CreateRequest::BindMount::Mode::RW)
+            expect(req.bind_mounts[1].mode).to eq(Warden::Protocol::CreateRequest::BindMount::Mode::RW)
             res.handle = DEFAULT_HANDLE
           when Warden::Protocol::CopyInRequest
             raise 'Container not found' unless req.handle == DEFAULT_HANDLE
             env = Yajl::Parser.parse(File.read(req.src_path))
-            env['agent_id'].should == DEFAULT_AGENT_ID
-            env['vm']['name'].should_not == nil
-            env['vm']['id'].should_not == nil
-            env['mbus'].should_not == nil
-            env['ntp'].should be_instance_of Array
-            env['blobstore'].should be_instance_of Hash
+            expect(env['agent_id']).to eq(DEFAULT_AGENT_ID)
+            expect(env['vm']['name']).not_to be_nil
+            expect(env['vm']['id']).not_to be_nil
+            expect(env['mbus']).not_to be_nil
+            expect(env['ntp']).to be_an_instance_of Array
+            expect(env['blobstore']).to be_an_instance_of Hash
           when Warden::Protocol::RunRequest
             # Ignore
           when Warden::Protocol::SpawnRequest
-            req.script.should == '/usr/sbin/runsvdir-start'
-            req.privileged.should == true
+            expect(req.script).to eq('/usr/sbin/runsvdir-start')
+            expect(req.privileged).to be true
           when Warden::Protocol::DestroyRequest
-            req.handle.should == DEFAULT_HANDLE
+            expect(req.handle).to eq(DEFAULT_HANDLE)
             @destroy_called = true
           else
             raise "#{req} not supported"
@@ -130,7 +130,7 @@ describe Bosh::WardenCloud::Cloud do
       else
         raise 'Expected FakeError'
       end
-      @destroy_called.should be(true)
+      expect(@destroy_called).to be true
     end
   end
 
@@ -140,7 +140,7 @@ describe Bosh::WardenCloud::Cloud do
         res = req.create_response
         case req
           when Warden::Protocol::DestroyRequest
-            req.handle.should == DEFAULT_HANDLE
+            expect(req.handle).to eq(DEFAULT_HANDLE)
           when Warden::Protocol::ListRequest
             res.handles = DEFAULT_HANDLE
           else
@@ -168,7 +168,7 @@ describe Bosh::WardenCloud::Cloud do
         res = req.create_response
         case req
           when Warden::Protocol::DestroyRequest
-            req.handle.should == DEFAULT_HANDLE
+            expect(req.handle).to eq(DEFAULT_HANDLE)
           when Warden::Protocol::ListRequest
             res.handles = DEFAULT_HANDLE
           else
@@ -198,11 +198,11 @@ describe Bosh::WardenCloud::Cloud do
     end
 
     it 'return true when container exist' do
-      @cloud.has_vm?(DEFAULT_HANDLE).should == true
+      expect(@cloud.has_vm?(DEFAULT_HANDLE)).to be true
     end
 
     it 'return false when container not exist' do
-      @cloud.has_vm?('vm_not_exist').should == false
+      expect(@cloud.has_vm?('vm_not_exist')).to be false
     end
   end
 
@@ -212,12 +212,12 @@ describe Bosh::WardenCloud::Cloud do
     end
 
     it 'invoke disk_utils to create stemcell with uuid' do
-      @disk_util.should_receive(:stemcell_unpack).with('imgpath', DEFAULT_STEMCELL_ID)
+      expect(@disk_util).to receive(:stemcell_unpack).with('imgpath', DEFAULT_STEMCELL_ID)
       @cloud.create_stemcell('imgpath', nil)
     end
 
     it 'invoke disk_utils to delete stemcell with uuid' do
-      @disk_util.should_receive(:stemcell_delete).with(DEFAULT_STEMCELL_ID)
+      expect(@disk_util).to receive(:stemcell_delete).with(DEFAULT_STEMCELL_ID)
       @cloud.delete_stemcell(DEFAULT_STEMCELL_ID)
     end
   end
@@ -228,13 +228,13 @@ describe Bosh::WardenCloud::Cloud do
     end
 
     it 'invoke disk_utils to create disk with uuid' do
-      @disk_util.should_receive(:create_disk).with('disk-uuid-1234', 1024)
+      expect(@disk_util).to receive(:create_disk).with('disk-uuid-1234', 1024)
       @cloud.create_disk(1024, nil)
     end
 
     it 'invoke disk_utils to delete disk with uuid' do
-      @disk_util.should_receive(:disk_exist?).with('disk-uuid-1234').and_return(true)
-      @disk_util.should_receive(:delete_disk).with('disk-uuid-1234')
+      expect(@disk_util).to receive(:disk_exist?).with('disk-uuid-1234').and_return(true)
+      expect(@disk_util).to receive(:delete_disk).with('disk-uuid-1234')
       @cloud.delete_disk('disk-uuid-1234')
     end
 
@@ -242,10 +242,10 @@ describe Bosh::WardenCloud::Cloud do
       @cloud.stub(:get_agent_env) { { 'disks' => { 'persistent' => {} } } }
       expected_env = { 'disks' => { 'persistent' => { 'disk-uuid-1234' => '/warden-cpi-dev/disk-uuid-1234' } } }
       expected_mountpoint = File.join(@disk_root, 'bind_mount_points', 'vm-uuid-1234', 'disk-uuid-1234')
-      @disk_util.should_receive(:disk_exist?).with('disk-uuid-1234').and_return(true)
-      @disk_util.should_receive(:mount_disk).with(expected_mountpoint, 'disk-uuid-1234')
-      @cloud.should_receive(:set_agent_env).with('vm-uuid-1234', expected_env)
-      @cloud.should_receive(:has_vm?).with('vm-uuid-1234').and_return(true)
+      expect(@disk_util).to receive(:disk_exist?).with('disk-uuid-1234').and_return(true)
+      expect(@disk_util).to receive(:mount_disk).with(expected_mountpoint, 'disk-uuid-1234')
+      expect(@cloud).to receive(:set_agent_env).with('vm-uuid-1234', expected_env)
+      expect(@cloud).to receive(:has_vm?).with('vm-uuid-1234').and_return(true)
       @cloud.attach_disk('vm-uuid-1234', 'disk-uuid-1234')
     end
 
