@@ -13,9 +13,9 @@ describe Bosh::WardenCloud::Cloud do
     @stemcell_root = File.join(@stemcell_path, DEFAULT_STEMCELL_ID)
     @disk_util = double('DiskUtils')
     @warden_client = double(Warden::Client)
-    @disk_util.stub(:stemcell_path).and_return(@stemcell_root)
-    Bosh::WardenCloud::DiskUtils.stub(:new).with(@disk_root, @stemcell_path, 'ext4').and_return(@disk_util)
-    Warden::Client.stub(:new).and_return(@warden_client)
+    allow(@disk_util).to receive(:stemcell_path).and_return(@stemcell_root)
+    allow(Bosh::WardenCloud::DiskUtils).to receive(:new).with(@disk_root, @stemcell_path, 'ext4').and_return(@disk_util)
+    allow(Warden::Client).to receive(:new).and_return(@warden_client)
 
     cloud_options = {
         'disk' => {
@@ -36,8 +36,8 @@ describe Bosh::WardenCloud::Cloud do
     }
     @cloud = Bosh::Clouds::Provider.create(:warden, cloud_options)
 
-    @warden_client.stub(:connect) {}
-    @warden_client.stub(:disconnect) {}
+    allow(@warden_client).to receive(:connect) {}
+    allow(@warden_client).to receive(:disconnect) {}
   end
 
   after :each do
@@ -53,9 +53,9 @@ describe Bosh::WardenCloud::Cloud do
 
   context 'create_vm' do
     before :each do
-      @cloud.stub(:uuid).with('vm') { DEFAULT_HANDLE }
+      allow(@cloud).to receive(:uuid).with('vm') { DEFAULT_HANDLE }
       Dir.mkdir(@stemcell_root)
-      @warden_client.stub(:call) do |req|
+      allow(@warden_client).to receive(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::CreateRequest
@@ -93,7 +93,7 @@ describe Bosh::WardenCloud::Cloud do
     end
 
     it 'can create vm' do
-      @cloud.should_receive(:sudo).exactly(3)
+      expect(@cloud).to receive(:sudo).exactly(3)
       network_spec = {
           'nic1' => { 'ip' => '1.1.1.1', 'type' => 'static' },
       }
@@ -101,7 +101,7 @@ describe Bosh::WardenCloud::Cloud do
     end
 
     it 'should raise error for invalid stemcell' do
-      @disk_util.stub(:stemcell_path).and_return('invalid_dir')
+      allow(@disk_util).to receive(:stemcell_path).and_return('invalid_dir')
       expect {
         @cloud.create_vm('agent_id', 'invalid_stemcell_id', nil, {})
       }.to raise_error Bosh::Clouds::CloudError
@@ -119,8 +119,8 @@ describe Bosh::WardenCloud::Cloud do
 
     it 'should clean up when an error raised' do
       class FakeError < StandardError; end
-      Bosh::WardenCloud::Cloud.any_instance.stub(:sudo) {}
-      @cloud.stub(:set_agent_env) { raise FakeError.new }
+      allow(@cloud).to receive(:sudo) {}
+      allow(@cloud).to receive(:set_agent_env) { raise FakeError.new }
       network_spec = {
           'nic1' => { 'ip' => '1.1.1.1', 'type' => 'static' },
       }
@@ -136,7 +136,7 @@ describe Bosh::WardenCloud::Cloud do
 
   context 'delete_vm' do
     it 'can delete vm' do
-      @warden_client.stub(:call) do |req|
+      allow(@warden_client).to receive(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::DestroyRequest
@@ -155,7 +155,7 @@ describe Bosh::WardenCloud::Cloud do
     end
 
     it 'should proceed even delete a vm which not exist' do
-      @cloud.stub(:has_vm?).with('vm_not_existed').and_return(false)
+      allow(@cloud).to receive(:has_vm?).with('vm_not_existed').and_return(false)
       mock_sh("rm -rf #{@disk_root}/ephemeral_mount_point/vm_not_existed", true)
       mock_sh("rm -rf #{@disk_root}/bind_mount_points/vm_not_existed", true)
       expect {
@@ -164,7 +164,7 @@ describe Bosh::WardenCloud::Cloud do
     end
 
     it 'can delete a vm with disk attached' do
-      @warden_client.stub(:call) do |req|
+      allow(@warden_client).to receive(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::DestroyRequest
@@ -185,7 +185,7 @@ describe Bosh::WardenCloud::Cloud do
 
   context 'has_vm' do
     before :each do
-      @warden_client.stub(:call) do |req|
+      allow(@warden_client).to receive(:call) do |req|
         res = req.create_response
         case req
           when Warden::Protocol::ListRequest
@@ -208,7 +208,7 @@ describe Bosh::WardenCloud::Cloud do
 
   context 'stemcells' do
     before :each do
-      @cloud.stub(:uuid).with('stemcell') { DEFAULT_STEMCELL_ID }
+      allow(@cloud).to receive(:uuid).with('stemcell') { DEFAULT_STEMCELL_ID }
     end
 
     it 'invoke disk_utils to create stemcell with uuid' do
@@ -224,7 +224,7 @@ describe Bosh::WardenCloud::Cloud do
 
   context 'disk create/delete/attach/detach' do
     before :each do
-      @cloud.stub(:uuid).with('disk') { 'disk-uuid-1234' }
+      allow(@cloud).to receive(:uuid).with('disk') { 'disk-uuid-1234' }
     end
 
     it 'invoke disk_utils to create disk with uuid' do
@@ -239,7 +239,7 @@ describe Bosh::WardenCloud::Cloud do
     end
 
     it 'invoke disk_utils to mount disk and setup agent env when attach disk' do
-      @cloud.stub(:get_agent_env) { { 'disks' => { 'persistent' => {} } } }
+      allow(@cloud).to receive(:get_agent_env) { { 'disks' => { 'persistent' => {} } } }
       expected_env = { 'disks' => { 'persistent' => { 'disk-uuid-1234' => '/warden-cpi-dev/disk-uuid-1234' } } }
       expected_mountpoint = File.join(@disk_root, 'bind_mount_points', 'vm-uuid-1234', 'disk-uuid-1234')
       expect(@disk_util).to receive(:disk_exist?).with('disk-uuid-1234').and_return(true)
@@ -250,13 +250,13 @@ describe Bosh::WardenCloud::Cloud do
     end
 
     it 'invoke disk_utils to umount disk and remove agent env when detach disk' do
-      @cloud.stub(:get_agent_env) { { 'disks' => { 'persistent' => { 'disk-uuid-1234' => '/warden-cpi-dev/disk-uuid-1234' } } } }
+      allow(@cloud).to receive(:get_agent_env) { { 'disks' => { 'persistent' => { 'disk-uuid-1234' => '/warden-cpi-dev/disk-uuid-1234' } } } }
       expected_env = { 'disks' => { 'persistent' => { 'disk-uuid-1234' => nil } } }
       expected_mountpoint = File.join(@disk_root, 'bind_mount_points', 'vm-uuid-1234', 'disk-uuid-1234')
-      @disk_util.should_receive(:disk_exist?).with('disk-uuid-1234').and_return(true)
-      @disk_util.should_receive(:umount_disk).with(expected_mountpoint)
-      @cloud.should_receive(:set_agent_env).with('vm-uuid-1234', expected_env)
-      @cloud.should_receive(:has_vm?).with('vm-uuid-1234').and_return(true)
+      expect(@disk_util).to receive(:disk_exist?).with('disk-uuid-1234').and_return(true)
+      expect(@disk_util).to receive(:umount_disk).with(expected_mountpoint)
+      expect(@cloud).to receive(:set_agent_env).with('vm-uuid-1234', expected_env)
+      expect(@cloud).to receive(:has_vm?).with('vm-uuid-1234').and_return(true)
       @cloud.detach_disk('vm-uuid-1234', 'disk-uuid-1234')
     end
   end
