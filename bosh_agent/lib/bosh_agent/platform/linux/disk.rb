@@ -48,9 +48,12 @@ module Bosh::Agent
           raise Bosh::Agent::FatalError, "call is_disk_blockdev failed, unsupported infrastructure #{Bosh::Agent::Config.infrastructure_name}"
       end
 
-      proceed_mount = is_disk_blockdev?? File.blockdev?(partition) : true
-
-      if proceed_mount && !mount_exists?(partition)
+      if is_disk_blockdev?
+        if File.blockdev?(partition) && !mount_exists?(partition)
+          mounter.mount(partition, mount_point, options.merge(infra_option))
+        end
+      else
+        # No mount_exists checks for warden-cpi since we link /proc/self/mounts to /etc/mtab
         mounter.mount(partition, mount_point, options.merge(infra_option))
       end
     end
