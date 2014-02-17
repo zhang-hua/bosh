@@ -63,7 +63,7 @@ describe 'Ubuntu Stemcell' do
     end
   end
 
-  context 'installed by base_apt' do
+  context 'installed by base_apt', exclude_on_warden: true do
     {
       'upstart'              => '0.6.5-8',
       'build-essential'      => '11.4build1',
