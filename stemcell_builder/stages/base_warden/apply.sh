@@ -23,6 +23,11 @@ ln -s /etc/sv/rsyslog /etc/service/rsyslog
 ln -s /etc/sv/ssh /etc/service/ssh
 "
 
+run_in_chroot $chroot "
+rm /etc/mtab
+ln -s /proc/self/mounts /etc/mtab
+"
+
 if grep -q -i ubuntu $chroot/etc/issue
 # if this is Ubuntu stemcell
 then
