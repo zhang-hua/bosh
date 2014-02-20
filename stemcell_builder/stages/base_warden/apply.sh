@@ -23,9 +23,10 @@ ln -s /etc/sv/rsyslog /etc/service/rsyslog
 ln -s /etc/sv/ssh /etc/service/ssh
 "
 
-run_in_chroot $chroot "
-ln -s /proc/self/mounts /etc/mtab
-"
+# Pending for disk_quota
+#run_in_chroot $chroot "
+#ln -s /proc/self/mounts /etc/mtab
+#"
 
 if grep -q -i ubuntu $chroot/etc/issue
 # if this is Ubuntu stemcell
