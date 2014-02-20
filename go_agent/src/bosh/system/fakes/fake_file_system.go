@@ -24,8 +24,9 @@ type FakeFileSystem struct {
 
 	FilesToOpen map[string]*os.File
 
-	MkdirAllError error
-	SymlinkError  error
+	WriteToFileError error
+	MkdirAllError    error
+	SymlinkError     error
 
 	CopyDirEntriesError   error
 	CopyDirEntriesSrcPath string
@@ -94,6 +95,11 @@ func (fs *FakeFileSystem) Chmod(path string, perm os.FileMode) (err error) {
 }
 
 func (fs *FakeFileSystem) WriteToFile(path, content string) (written bool, err error) {
+	if fs.WriteToFileError != nil {
+		err = fs.WriteToFileError
+		return
+	}
+
 	stats := fs.getOrCreateFile(path)
 	stats.FileType = FakeFileTypeFile
 
@@ -152,6 +158,17 @@ func (fs *FakeFileSystem) Symlink(oldPath, newPath string) (err error) {
 	}
 
 	err = fs.SymlinkError
+	return
+}
+
+func (fs *FakeFileSystem) ReadLink(symlinkPath string) (targetPath string, err error) {
+	stat := fs.GetFileTestStat(symlinkPath)
+	if stat != nil {
+		targetPath = stat.SymlinkTarget
+	} else {
+		err = os.ErrNotExist
+	}
+
 	return
 }
 
@@ -231,7 +248,7 @@ func (fs *FakeFileSystem) TempDir(prefix string) (string, error) {
 	return path, nil
 }
 
-func (fs *FakeFileSystem) RemoveAll(path string) {
+func (fs *FakeFileSystem) RemoveAll(path string) (err error) {
 	filesToRemove := []string{}
 
 	for name, _ := range fs.Files {
@@ -243,6 +260,7 @@ func (fs *FakeFileSystem) RemoveAll(path string) {
 	for _, name := range filesToRemove {
 		delete(fs.Files, name)
 	}
+	return
 }
 
 func (fs *FakeFileSystem) Open(path string) (file *os.File, err error) {

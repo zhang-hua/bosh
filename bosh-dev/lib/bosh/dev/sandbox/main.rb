@@ -5,6 +5,7 @@ require 'bosh/dev/sandbox/service'
 require 'bosh/dev/sandbox/socket_connector'
 require 'bosh/dev/sandbox/database_migrator'
 require 'bosh/dev/sandbox/postgresql'
+require 'bosh/dev/sandbox/mysql'
 
 module Bosh::Dev::Sandbox
   class Main
@@ -54,6 +55,8 @@ module Bosh::Dev::Sandbox
 
       @nats_process = Service.new(%W[nats-server -p #{nats_port}], {}, @logger)
 
+      @nats_socket_connector = SocketConnector.new('localhost', nats_port, @logger)
+
       @director_process = Service.new(
         %W[bosh-director -c #{director_config}],
         { output: "#{base_log_path}.director.out" },
@@ -80,7 +83,12 @@ module Bosh::Dev::Sandbox
         @logger,
       )
 
-      @postgresql = Postgresql.new(sandbox_root, @name, @logger)
+      if ENV['DB'] == 'mysql'
+        mysql_user, mysql_password = ENV['TRAVIS'] ? ['travis', ''] : %w(root password)
+        @database = Mysql.new(sandbox_root, @name, @logger, mysql_user, mysql_password)
+      else
+        @database = Postgresql.new(sandbox_root, @name, @logger)
+      end
 
       @database_migrator = DatabaseMigrator.new(DIRECTOR_PATH, director_config, @logger)
     end
@@ -96,16 +104,19 @@ module Bosh::Dev::Sandbox
     def start
       setup_sandbox_root
 
-      @postgresql.create_db
+      @redis_process.start
+      @logger.info('Waiting for redis-server to come up')
+      @redis_socket_connector.try_to_connect
+      @nats_process.start
+      @logger.info('Waiting for nats-server to come up')
+      @nats_socket_connector.try_to_connect
+
+      @database.create_db
       @database_migrator.migrate
 
       FileUtils.mkdir_p(cloud_storage_dir)
       FileUtils.rm_rf(logs_path)
       FileUtils.mkdir_p(logs_path)
-
-      @redis_process.start
-      @nats_process.start
-      @redis_socket_connector.try_to_connect
     end
 
     def reset(name)
@@ -117,6 +128,12 @@ module Bosh::Dev::Sandbox
       @director_process.stop
       write_in_sandbox(DIRECTOR_CONFIG, load_config_template(DIRECTOR_CONF_TEMPLATE))
       @director_process.start
+    end
+
+    def reconfigure_health_monitor(erb_template)
+      @health_monitor_process.stop
+      write_in_sandbox(HM_CONFIG, load_config_template(File.join(ASSETS_DIR, erb_template)))
+      @health_monitor_process.start
     end
 
     def cloud_storage_dir
@@ -138,7 +155,7 @@ module Bosh::Dev::Sandbox
       @redis_process.stop
       @nats_process.stop
       @health_monitor_process.stop
-      @postgresql.drop_db
+      @database.drop_db
       FileUtils.rm_f(dns_db_path)
       FileUtils.rm_rf(director_tmp_path)
       FileUtils.rm_rf(agent_tmp_path)
@@ -189,8 +206,8 @@ module Bosh::Dev::Sandbox
 
       Redis.new(host: 'localhost', port: redis_port).flushdb
 
-      @postgresql.drop_db
-      @postgresql.create_db
+      @database.drop_db
+      @database.create_db
       @database_migrator.migrate
 
       FileUtils.rm_rf(blobstore_storage_dir)

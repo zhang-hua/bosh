@@ -4,12 +4,17 @@ require 'bosh/stemcell/stage_collection'
 module Bosh::Stemcell
   describe StageCollection do
     subject(:stage_collection) do
-      StageCollection.new(
+      StageCollection.new(definition)
+    end
+
+    let(:definition) {
+      instance_double(
+        'Bosh::Stemcell::Definition',
         infrastructure: infrastructure,
         operating_system: operating_system,
-        agent_name: agent_name,
+        agent: agent,
       )
-    end
+    }
 
     let(:ubuntu_stages) {
       [
@@ -92,6 +97,7 @@ module Bosh::Stemcell
     let(:vsphere_ubuntu_infrastructure_stages) {
       [
         :system_open_vm_tools,
+        :system_vsphere_cdrom,
         :system_parameters,
         :bosh_clean,
         :bosh_harden,
@@ -107,6 +113,7 @@ module Bosh::Stemcell
     let(:vsphere_centos_infrastructure_stages) {
       [
         #:system_open_vm_tools,
+        :system_vsphere_cdrom,
         :system_parameters,
         :bosh_clean,
         :bosh_harden,
@@ -121,7 +128,7 @@ module Bosh::Stemcell
 
     describe '#all_stages' do
       context 'when using the ruby agent' do
-        let(:agent_name) { 'ruby' }
+        let(:agent) { Agent.for('ruby') }
         let(:agent_stages) {
           [
             :bosh_ruby,
@@ -198,7 +205,7 @@ module Bosh::Stemcell
       end
 
       context 'when using the go agent' do
-        let(:agent_name) { 'go' }
+        let(:agent) { Agent.for('go') }
         let(:agent_stages) {
           [
             :bosh_ruby,

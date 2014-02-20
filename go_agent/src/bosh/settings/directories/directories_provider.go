@@ -46,3 +46,11 @@ func (p DirectoriesProvider) MonitJobsDir() string {
 func (p DirectoriesProvider) JobsDir() string {
 	return filepath.Join(p.BaseDir(), "jobs")
 }
+
+func (p DirectoriesProvider) MicroStore() string {
+	return filepath.Join(p.BaseDir(), "micro_bosh", "data", "cache")
+}
+
+func (p DirectoriesProvider) SettingsDir() string {
+	return filepath.Join(p.BaseDir(), "bosh", "settings")
+}

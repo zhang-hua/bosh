@@ -119,3 +119,33 @@ builds:
     version: 26
     sha1: !binary |-
       ZGVkZDlhNTVlZGM2Y2EwZWZmZmEyY2U5ZDYwODU0MWNlNDUyMjk5OA==
+  !binary "ZmYxYjdhMGJjZDc0ODI4ZWU2Nzk0ZDQ3MGQzOWE4ODdiOGE4NGQwMA==":
+    blobstore_id: b1b78146-4ec0-4447-a6c0-f91a33f7150f
+    version: 27
+    sha1: !binary |-
+      MGE5ZGY0MTI0YTBiNDViMzJkZjBkNTdkY2IwZjEwNjZkOWEwODY5Ng==
+  !binary "MzMxOTUzYmFlOGNmYTRjMTQyMWY1NWEyMzkzODkwOTI2MDZkZjgxYw==":
+    blobstore_id: c7ab9a2b-4419-407b-9cd8-703074ce4155
+    version: 28
+    sha1: !binary |-
+      ZDA3ODU2MTE5OGQ5NDE1OWRhY2M5ZGFkMGMyODY5ZTQ5M2ZhMzY3Yw==
+  !binary "NmRlZjg2ZTU2N2MwMWU0MDUxYjE5NjI5OTllZTE5YTUzZjAxMTg1Yg==":
+    blobstore_id: fe26d68a-2f9a-4c2c-9fbe-f52273157b85
+    version: 29
+    sha1: !binary |-
+      OTI0YjU4ZDJjYTM3MWFhMzU0MGEyNTBkYWU4ZWUxNDJhZmIxMWJlYQ==
+  !binary "NmY3MzQwMGJlNjI3MTFjNDhmNjk3ODFhNGE2OTA0M2E1ODhlZGVhYg==":
+    blobstore_id: 659206a9-5b7b-4239-b8fa-0b94bb7b6b6b
+    version: 30
+    sha1: !binary |-
+      MThhZjlkN2RjODQzZmYxZTU3NjM2M2QzZGMzNjU0ZTlhZjYwNDRjNw==
+  !binary "OGE3OTYyZmYyZDQ0NTVhMGQ4OTUxZGNhMzQ1ZWJkMWMzNmU4ZDUxZg==":
+    blobstore_id: 8ef22537-081b-4fdc-b42b-4bb133b95ce2
+    version: 31
+    sha1: !binary |-
+      YmVhM2QwYmEzMjFmY2M2YTEwMjJjODMzMzliM2EyOWE1MmIxMGIzOQ==
+  !binary "NTc1NmM3ZDVjNDhhMWQ1YjQ0MmY3Y2Y2YzliOTFmMWE5OTBlY2E5Mg==":
+    blobstore_id: 5fbfe8af-eae3-47a2-a17c-23559a6d2671
+    version: 32
+    sha1: !binary |-
+      ZWNmNTkwMDEzNmMwNDY3MjJkYTYzYzM5MTY3MDU0NzBlYTBhOGY3NA==

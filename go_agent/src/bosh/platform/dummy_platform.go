@@ -20,7 +20,7 @@ type dummyPlatform struct {
 	vitalsService boshvitals.Service
 }
 
-func newDummyPlatform(
+func NewDummyPlatform(
 	collector boshstats.StatsCollector,
 	fs boshsys.FileSystem,
 	cmdRunner boshsys.CmdRunner,
@@ -97,6 +97,10 @@ func (p dummyPlatform) SetupDhcp(networks boshsettings.Networks) (err error) {
 	return
 }
 
+func (p dummyPlatform) SetupManualNetworking(networks boshsettings.Networks) (err error) {
+	return
+}
+
 func (p dummyPlatform) SetupLogrotate(groupName, basePath, size string) (err error) {
 	return
 }
@@ -109,11 +113,23 @@ func (p dummyPlatform) SetupEphemeralDiskWithPath(devicePath string) (err error)
 	return
 }
 
+func (p dummyPlatform) SetupTmpDir() (err error) {
+	return
+}
+
 func (p dummyPlatform) MountPersistentDisk(devicePath, mountPoint string) (err error) {
 	return
 }
 
 func (p dummyPlatform) UnmountPersistentDisk(devicePath string) (didUnmount bool, err error) {
+	return
+}
+
+func (p dummyPlatform) NormalizeDiskPath(devicePath string) (realPath string, found bool) {
+	return devicePath, true
+}
+
+func (p dummyPlatform) GetFileContentsFromCDROM(filePath string) (contents []byte, err error) {
 	return
 }
 

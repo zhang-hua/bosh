@@ -48,7 +48,9 @@ describe 'with release and stemcell and two deployments' do
       pending 'pending this temporary due to flaky bat release' if warden?
       deployment_result = bosh('deploy')
       events(get_task_id(deployment_result.output)).each do |event|
-        event['stage'].should_not match /^Updating/
+        if event['stage']
+          expect(event['stage']).to_not match(/^Updating/)
+        end
       end
     end
 

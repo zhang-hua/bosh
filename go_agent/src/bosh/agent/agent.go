@@ -3,6 +3,7 @@ package agent
 import (
 	boshalert "bosh/agent/alert"
 	bosherr "bosh/errors"
+	boshhandler "bosh/handler"
 	boshjobsup "bosh/jobsupervisor"
 	boshlog "bosh/logger"
 	boshmbus "bosh/mbus"
@@ -10,9 +11,9 @@ import (
 	"time"
 )
 
-type agent struct {
+type Agent struct {
 	logger            boshlog.Logger
-	mbusHandler       boshmbus.Handler
+	mbusHandler       boshhandler.Handler
 	platform          boshplatform.Platform
 	actionDispatcher  ActionDispatcher
 	heartbeatInterval time.Duration
@@ -21,24 +22,25 @@ type agent struct {
 }
 
 func New(logger boshlog.Logger,
-	mbusHandler boshmbus.Handler,
+	mbusHandler boshhandler.Handler,
 	platform boshplatform.Platform,
 	actionDispatcher ActionDispatcher,
 	alertBuilder boshalert.Builder,
 	jobSupervisor boshjobsup.JobSupervisor,
-) (a agent) {
+	heartbeatInterval time.Duration,
+) (a Agent) {
 
 	a.logger = logger
 	a.mbusHandler = mbusHandler
 	a.platform = platform
 	a.actionDispatcher = actionDispatcher
-	a.heartbeatInterval = time.Minute
+	a.heartbeatInterval = heartbeatInterval
 	a.alertBuilder = alertBuilder
 	a.jobSupervisor = jobSupervisor
 	return
 }
 
-func (a agent) Run() (err error) {
+func (a Agent) Run() (err error) {
 	err = a.platform.StartMonit()
 	if err != nil {
 		err = bosherr.WrapError(err, "Starting Monit")
@@ -57,7 +59,7 @@ func (a agent) Run() (err error) {
 	return
 }
 
-func (a agent) subscribeActionDispatcher(errChan chan error) {
+func (a Agent) subscribeActionDispatcher(errChan chan error) {
 	defer a.logger.HandlePanic("Agent Message Bus Handler")
 
 	err := a.mbusHandler.Run(a.actionDispatcher.Dispatch)
@@ -68,7 +70,7 @@ func (a agent) subscribeActionDispatcher(errChan chan error) {
 	errChan <- err
 }
 
-func (a agent) generateHeartbeats(errChan chan error) {
+func (a Agent) generateHeartbeats(errChan chan error) {
 	defer a.logger.HandlePanic("Agent Generate Heartbeats")
 
 	tickChan := time.Tick(a.heartbeatInterval)
@@ -82,7 +84,7 @@ func (a agent) generateHeartbeats(errChan chan error) {
 	}
 }
 
-func (a agent) sendHeartbeat(errChan chan error) {
+func (a Agent) sendHeartbeat(errChan chan error) {
 	heartbeat := a.getHeartbeat()
 	err := a.mbusHandler.SendToHealthManager("heartbeat", heartbeat)
 	if err != nil {
@@ -91,7 +93,7 @@ func (a agent) sendHeartbeat(errChan chan error) {
 	}
 }
 
-func (a agent) getHeartbeat() (hb boshmbus.Heartbeat) {
+func (a Agent) getHeartbeat() (hb boshmbus.Heartbeat) {
 	vitalsService := a.platform.GetVitalsService()
 
 	vitals, err := vitalsService.Get()
@@ -103,7 +105,7 @@ func (a agent) getHeartbeat() (hb boshmbus.Heartbeat) {
 	return
 }
 
-func (a agent) handleJobFailure(monitAlert boshalert.MonitAlert) (err error) {
+func (a Agent) handleJobFailure(monitAlert boshalert.MonitAlert) (err error) {
 	alert, err := a.alertBuilder.Build(monitAlert)
 	if err != nil {
 		err = bosherr.WrapError(err, "Building alert")

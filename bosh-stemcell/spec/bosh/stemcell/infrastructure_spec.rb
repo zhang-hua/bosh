@@ -49,6 +49,9 @@ module Bosh::Stemcell
     its(:hypervisor)        { should eq('xen') }
     its(:default_disk_size) { should eq(2048) }
     it { should be_light }
+
+    it { should eq Infrastructure.for('aws') }
+    it { should_not eq Infrastructure.for('openstack') }
   end
 
   describe Infrastructure::OpenStack do
@@ -56,6 +59,9 @@ module Bosh::Stemcell
     its(:hypervisor)        { should eq('kvm') }
     its(:default_disk_size) { should eq(10240) }
     it { should_not be_light }
+
+    it { should eq Infrastructure.for('openstack') }
+    it { should_not eq Infrastructure.for('vsphere') }
   end
 
   describe Infrastructure::Vsphere do
@@ -63,5 +69,8 @@ module Bosh::Stemcell
     its(:hypervisor)        { should eq('esxi') }
     its(:default_disk_size) { should eq(3072) }
     it { should_not be_light }
+
+    it { should eq Infrastructure.for('vsphere') }
+    it { should_not eq Infrastructure.for('aws') }
   end
 end

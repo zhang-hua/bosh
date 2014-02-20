@@ -38,6 +38,7 @@ module Bosh::Dev
        bosh_vsphere_cpi
        bosh_warden_cpi
        bosh-director
+       bosh-director-core
        bosh-monitor
        bosh-release
        simple_blobstore_server

@@ -69,8 +69,8 @@ module Bosh::Director
       # @param [Bosh::Director::DeploymentPlan] deployment Deployment plan
       # @param [Hash] job_spec Raw job spec from the deployment manifest
       # @return [Bosh::Director::DeploymentPlan::Job]
-      def self.parse(deployment, job_spec)
-        job_parser = JobSpecParser.new(deployment)
+      def self.parse(deployment, job_spec, event_log)
+        job_parser = JobSpecParser.new(deployment, event_log)
         job_parser.parse(job_spec)
       end
 
@@ -121,7 +121,6 @@ module Bosh::Director
         first_template = @templates[0]
         result = {
           "name" => @name,
-          "release" => @release.name,
           "templates" => [],
           # --- Legacy ---
           "template" => first_template.name,
@@ -216,9 +215,15 @@ module Bosh::Director
 
         releases_by_package_names.each do |package_name, releases|
           if releases.size > 1
+            release1, release2 = releases.to_a[0..1]
+            offending_template1 = templates.find { |t| t.release == release1 }
+            offending_template2 = templates.find { |t| t.release == release2 }
+
             raise JobPackageCollision,
-                  "Colocated package `#{package_name}' has the same name in multiple releases. " +
-                  'BOSH cannot currently colocate two packages with identical names from separate releases.'
+                  "Package name collision detected in job `#{@name}': "\
+                  "template `#{release1.name}/#{offending_template1.name}' depends on package `#{release1.name}/#{package_name}', "\
+                  "template `#{release2.name}/#{offending_template2.name}' depends on `#{release2.name}/#{package_name}'. " +
+                  'BOSH cannot currently collocate two packages with identical names from separate releases.'
           end
         end
       end

@@ -1,13 +1,12 @@
-require 'bosh/stemcell/infrastructure'
-require 'bosh/stemcell/operating_system'
+require 'bosh/stemcell/definition'
+require 'forwardable'
 
 module Bosh::Stemcell
   class StageCollection
+    extend Forwardable
 
-    def initialize(options)
-      @infrastructure = options.fetch(:infrastructure)
-      @operating_system = options.fetch(:operating_system)
-      @agent_name = options.fetch(:agent_name)
+    def initialize(definition)
+      @definition = definition
     end
 
     def all_stages
@@ -16,18 +15,18 @@ module Bosh::Stemcell
 
     private
 
-    attr_reader :infrastructure, :operating_system, :agent_name
+    def_delegators :@definition, :infrastructure, :operating_system, :agent
 
     def agent_stages
-      case agent_name
-        when 'go'
+      case agent
+        when Agent::Go
           [
             :bosh_ruby,
             :bosh_go_agent,
             :bosh_micro_go,
             :aws_cli,
           ]
-        else
+        when Agent::Ruby
           [
             :bosh_ruby,
             :bosh_agent,
@@ -97,6 +96,7 @@ module Bosh::Stemcell
     def centos_vsphere_stages
       [
         #:system_open_vm_tools,
+        :system_vsphere_cdrom,
         :system_parameters,
         :bosh_clean,
         :bosh_harden,
@@ -171,6 +171,7 @@ module Bosh::Stemcell
     def vsphere_stages
       [
         :system_open_vm_tools,
+        :system_vsphere_cdrom,
         # Misc
         :system_parameters,
         # Finalisation
