@@ -241,7 +241,7 @@ module Bosh::Stemcell
         :stemcell
       ]
     end
-    
+
     def warden_stages
       [
         :system_parameters,
