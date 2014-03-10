@@ -40,24 +40,23 @@ module Bosh::Deployer
       config_sha1 = Bosh::Deployer::HashFingerprinter.new.sha1(config)
       ui_messager = Bosh::Deployer::UiMessager.for_deployer
 
-      new(config, config_sha1, ui_messager, plugin_name)
+      new(Config.configure(config), config_sha1, ui_messager, plugin_name)
     end
 
     def initialize(config, config_sha1, ui_messager, plugin_name)
-      Config.configure(config)
-      @config = Config
+      @config = config
 
       plugin_class = InstanceManager.const_get(plugin_name.capitalize)
-      @infrastructure = plugin_class.new(self, logger)
+      @infrastructure = plugin_class.new(self, config, logger)
 
-      @deployments_state = DeploymentsState.load_from_dir(config['dir'], logger)
-      load_state(config['name'])
+      @deployments_state = DeploymentsState.load_from_dir(config.base_dir, logger)
+      deployments_state.load_deployment(config.name, infrastructure)
 
-      Config.uuid = state.uuid
+      config.uuid = state.uuid
 
       @config_sha1 = config_sha1
       @ui_messager = ui_messager
-      @renderer = LoggerRenderer.new
+      @renderer = LoggerRenderer.new(logger)
     end
 
     def_delegators(
@@ -70,19 +69,16 @@ module Bosh::Deployer
     def_delegators(
       :@config,
       :cloud,
-      :agent,
       :logger,
-      :bosh_ip,
-      :bosh_ip=,
     )
 
-    def check_dependencies
-      infrastructure.check_dependencies
-    end
-
-    def discover_bosh_ip
-      infrastructure.discover_bosh_ip
-    end
+    def_delegators(
+      :infrastructure,
+      :check_dependencies,
+      :agent_services_ip,
+      :client_services_ip,
+      :internal_services_ip,
+    )
 
     def step(task)
       renderer.update(:started, task)
@@ -126,7 +122,6 @@ module Bosh::Deployer
       step "Creating VM from #{state.stemcell_cid}" do
         state.vm_cid = create_vm(state.stemcell_cid)
         update_vm_metadata(state.vm_cid, { 'Name' => state.name })
-        infrastructure.discover_bosh_ip
       end
       save_state
 
@@ -144,7 +139,7 @@ module Bosh::Deployer
 
       unless @apply_spec
         step 'Fetching apply spec' do
-          @apply_spec = Specification.new(agent.release_apply_spec)
+          @apply_spec = Specification.new(agent.release_apply_spec, config)
         end
       end
 
@@ -220,13 +215,13 @@ module Bosh::Deployer
           run_command("tar -zxf #{stemcell_tgz} -C #{stemcell}")
         end
 
-        @apply_spec = Specification.load_from_stemcell(stemcell)
+        @apply_spec = Specification.load_from_stemcell(stemcell, config)
 
         # load properties from stemcell manifest
         properties = load_stemcell_manifest(stemcell)
 
         # override with values from the deployment manifest
-        override = Config.cloud_options['properties']['stemcell']
+        override = config.cloud_options['properties']['stemcell']
         properties['cloud_properties'].merge!(override) if override
 
         step 'Uploading stemcell' do
@@ -242,9 +237,9 @@ module Bosh::Deployer
     # rubocop:enable MethodLength
 
     def create_vm(stemcell_cid)
-      resources = Config.resources['cloud_properties']
-      networks = Config.networks
-      env = Config.env
+      resources = config.resources['cloud_properties']
+      networks = config.networks
+      env = config.env
       cloud.create_vm(state.uuid, stemcell_cid, resources, networks, nil, env)
     end
 
@@ -283,7 +278,7 @@ module Bosh::Deployer
 
     def create_disk
       step 'Create disk' do
-        size = Config.resources['persistent_disk']
+        size = config.resources['persistent_disk']
         state.disk_cid = cloud.create_disk(size, state.vm_cid)
         save_state
       end
@@ -353,7 +348,7 @@ module Bosh::Deployer
         create_disk
         attach_disk(state.disk_cid, true)
       elsif infrastructure.persistent_disk_changed?
-        size = Config.resources['persistent_disk']
+        size = config.resources['persistent_disk']
 
         # save a reference to the old disk
         old_disk_cid = state.disk_cid
@@ -383,11 +378,12 @@ module Bosh::Deployer
       step 'Applying micro BOSH spec' do
         # first update spec with infrastructure specific stuff
         infrastructure.update_spec(spec)
-        # then update spec with generic changes
-        spec = spec.update(bosh_ip, infrastructure.service_ip)
 
-        microbosh_job_instance = MicroboshJobInstance.new(bosh_ip, Config.agent_url, logger)
-        spec = microbosh_job_instance.render_templates(spec)
+        # then update spec with generic changes
+        spec = spec.update(agent_services_ip, internal_services_ip)
+
+        microbosh_instance = MicroboshJobInstance.new(client_services_ip, config.agent_url, logger)
+        spec = microbosh_instance.render_templates(spec)
 
         agent.run_task(:apply, spec)
       end
@@ -399,7 +395,21 @@ module Bosh::Deployer
       deployments_state.save(infrastructure)
     end
 
+    def agent
+      uri = URI.parse(config.agent_url)
+      user, password = uri.userinfo.split(':', 2)
+      uri.userinfo = nil
+      uri.host = client_services_ip
+      Bosh::Agent::HTTPClient.new(uri.to_s, {
+        'user' => user,
+        'password' => password,
+        'reply_to' => config.uuid,
+      })
+    end
+
     private
+
+    attr_reader :config
 
     def agent_stop
       step 'Stopping agent services' do
@@ -431,7 +441,7 @@ module Bosh::Deployer
     end
 
     def agent_port
-      URI.parse(Config.cloud_options['properties']['agent']['mbus']).port
+      URI.parse(config.cloud_options['properties']['agent']['mbus']).port
     end
 
     def wait_until_agent_ready
@@ -441,7 +451,7 @@ module Bosh::Deployer
 
     def wait_until_director_ready
       port = @apply_spec.director_port
-      url = "https://#{bosh_ip}:#{port}/info"
+      url = "https://#{client_services_ip}:#{port}/info"
 
       wait_until_ready('director', 1, 600) do
 
@@ -497,11 +507,6 @@ module Bosh::Deployer
       yield unless File.exist?(file)
       logger.info("Loading yaml from #{file}")
       Psych.load_file(file)
-    end
-
-    def load_state(name)
-      deployments_state.load_deployment(name, infrastructure)
-      infrastructure.discover_bosh_ip
     end
 
     def run_command(command)

@@ -84,12 +84,14 @@ module Bosh::Stemcell
 
     def exclude_exclusions
       case infrastructure.name
-      when 'vsphere'
-        ' --tag ~exclude_on_vsphere'
-      when 'warden'
-        ' --tag ~exclude_on_warden'
-      else
-        ''
+        when 'vsphere'
+          ' --tag ~exclude_on_vsphere'
+        when 'vcloud'
+          ' --tag ~exclude_on_vcloud'
+        when 'warden'
+          ' --tag ~exclude_on_warden'
+        else
+          ''
       end
     end
 

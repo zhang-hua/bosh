@@ -40,6 +40,10 @@ module Bosh::Director
       send_message(method_name, *args)
     end
 
+    def get_state(*args)
+      send_message(:get_state, *args)
+    end
+
     def prepare(*args)
       send_long_running_message(:prepare, *args)
     end
@@ -74,6 +78,10 @@ module Bosh::Director
 
     def stop(*args)
       send_long_running_message(:stop, *args)
+    end
+
+    def run_errand(*args)
+      send_long_running_message(:run_errand, *args)
     end
 
     def wait_until_ready(deadline = 600)

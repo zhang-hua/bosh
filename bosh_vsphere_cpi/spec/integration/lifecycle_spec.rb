@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'bosh/cpi/compatibility_helpers/delete_vm'
 require 'tempfile'
 require 'yaml'
 
@@ -38,7 +39,7 @@ describe VSphereCloud::Cloud do
     )
   end
 
-  let(:cpi) { @cpi }
+  subject(:cpi) { @cpi }
 
   before(:all) do
     Dir.mktmpdir do |temp_dir|
@@ -56,8 +57,10 @@ describe VSphereCloud::Cloud do
   before { @disk_id = nil }
   after { cpi.delete_disk(@disk_id) if @disk_id }
 
-  def vm_lifecycle(network_spec, disk_locality, resource_pool)
+  extend Bosh::Cpi::CompatibilityHelpers
+  it_can_delete_non_existent_vm
 
+  def vm_lifecycle(network_spec, disk_locality, resource_pool)
     @vm_id = cpi.create_vm(
       'agent-007',
       @stemcell_id,

@@ -10,6 +10,8 @@ module Bosh::Stemcell
           Vsphere.new
         when 'warden'
           Warden.new
+        when 'vcloud'
+          Vcloud.new
         else
           raise ArgumentError.new("invalid infrastructure: #{name}")
       end
@@ -46,6 +48,12 @@ module Bosh::Stemcell
     class Vsphere < Base
       def initialize
         super(name: 'vsphere', hypervisor: 'esxi', default_disk_size: 3072)
+      end
+    end
+
+    class Vcloud < Base
+      def initialize
+        super(name: 'vcloud', hypervisor: 'esxi', default_disk_size: 3072)
       end
     end
 

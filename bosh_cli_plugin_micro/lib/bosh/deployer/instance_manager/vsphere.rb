@@ -1,10 +1,13 @@
-# Copyright (c) 2009-2012 VMware, Inc.
+require 'forwardable'
 
 module Bosh::Deployer
   class InstanceManager
     class Vsphere
-      def initialize(instance_manager, logger)
+      extend Forwardable
+
+      def initialize(instance_manager, config, logger)
         @instance_manager = instance_manager
+        @config = config
         @logger = logger
       end
 
@@ -23,8 +26,8 @@ module Bosh::Deployer
         properties = spec.properties
 
         properties['vcenter'] =
-          Config.spec_properties['vcenter'] ||
-          Config.cloud_options['properties']['vcenters'].first.dup
+          config.spec_properties['vcenter'] ||
+            config.cloud_options['properties']['vcenters'].first.dup
 
         properties['vcenter']['address'] ||= properties['vcenter']['host']
       end
@@ -41,13 +44,12 @@ module Bosh::Deployer
       def stop
       end
 
-      def discover_bosh_ip
-        instance_manager.bosh_ip
-      end
-
-      def service_ip
-        instance_manager.bosh_ip
-      end
+      def_delegators(
+        :config,
+        :internal_services_ip,
+        :agent_services_ip,
+        :client_services_ip,
+      )
 
       # @return [Integer] size in MiB
       def disk_size(cid)
@@ -55,12 +57,12 @@ module Bosh::Deployer
       end
 
       def persistent_disk_changed?
-        Config.resources['persistent_disk'] != disk_size(instance_manager.state.disk_cid)
+        config.resources['persistent_disk'] != disk_size(instance_manager.state.disk_cid)
       end
 
       private
 
-      attr_reader :instance_manager, :logger
+      attr_reader :instance_manager, :logger, :config
 
       FakeRegistry = Struct.new(:port)
       def registry

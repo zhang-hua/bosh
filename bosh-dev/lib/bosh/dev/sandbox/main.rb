@@ -51,11 +51,13 @@ module Bosh::Dev::Sandbox
       @redis_process = Service.new(
         %W[redis-server #{sandbox_path(REDIS_CONFIG)}], {}, @logger)
 
-      @redis_socket_connector = SocketConnector.new('localhost', redis_port, @logger)
+      @redis_socket_connector = SocketConnector.new(
+        'redis', 'localhost', redis_port, @logger)
 
       @nats_process = Service.new(%W[nats-server -p #{nats_port}], {}, @logger)
 
-      @nats_socket_connector = SocketConnector.new('localhost', nats_port, @logger)
+      @nats_socket_connector = SocketConnector.new(
+        'nats', 'localhost', nats_port, @logger)
 
       @director_process = Service.new(
         %W[bosh-director -c #{director_config}],
@@ -63,7 +65,8 @@ module Bosh::Dev::Sandbox
         @logger,
       )
 
-      @director_socket_connector = SocketConnector.new('localhost', director_port, @logger)
+      @director_socket_connector = SocketConnector.new(
+        'director', 'localhost', director_port, @logger)
 
       @worker_process = Service.new(
         %W[bosh-director-worker -c #{director_config}],
@@ -85,9 +88,9 @@ module Bosh::Dev::Sandbox
 
       if ENV['DB'] == 'mysql'
         mysql_user, mysql_password = ENV['TRAVIS'] ? ['travis', ''] : %w(root password)
-        @database = Mysql.new(sandbox_root, @name, @logger, mysql_user, mysql_password)
+        @database = Mysql.new(@name, @logger, mysql_user, mysql_password)
       else
-        @database = Postgresql.new(sandbox_root, @name, @logger)
+        @database = Postgresql.new(@name, @logger)
       end
 
       @database_migrator = DatabaseMigrator.new(DIRECTOR_PATH, director_config, @logger)
@@ -200,7 +203,7 @@ module Bosh::Dev::Sandbox
 
     def do_reset(name)
       kill_agents
-      @worker_process.stop('QUIT')
+      @worker_process.stop
       @director_process.stop
       @health_monitor_process.stop
 
@@ -226,8 +229,8 @@ module Bosh::Dev::Sandbox
       @worker_process.start
 
       # CI does not have enough time to start bosh-director
-      # for some parallel tests; increasing to 40 secs (= 80 tries).
-      @director_socket_connector.try_to_connect(80)
+      # for some parallel tests; increasing to 60 secs (= 300 tries).
+      @director_socket_connector.try_to_connect(300)
     end
 
     def kill_agents

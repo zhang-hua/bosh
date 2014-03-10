@@ -52,7 +52,7 @@ module Bosh::Cli::Command
       if manifest['network'].blank?
         err 'network is not defined in deployment manifest'
       end
-      ip = deployer(manifest_filename).discover_bosh_ip || name
+      ip = deployer(manifest_filename).client_services_ip
 
       if target
         old_director_ip = URI.parse(target).host
@@ -298,7 +298,8 @@ AGENT_HELP
     usage 'micro apply'
     desc 'Apply spec'
     def apply(spec)
-      deployer.apply(Bosh::Deployer::Specification.new(load_yaml_file(spec)))
+      config = Bosh::Deployer::Config
+      deployer.apply(Bosh::Deployer::Specification.new(load_yaml_file(spec), config))
     end
 
     private
@@ -354,16 +355,12 @@ AGENT_HELP
 
     # rubocop:disable MethodLength
     def update_target
+      set_target(deployer.client_services_ip)
+
       if deployer.exists?
-        bosh_ip = deployer.discover_bosh_ip
-        if URI.parse(target).host != bosh_ip
-          set_current(deployment)
-        end
-
-        director = Bosh::Cli::Client::Director.new(target)
-
         if options[:director_checks]
           begin
+            director = Bosh::Cli::Client::Director.new(target)
             status = director.get_status
           rescue Bosh::Cli::AuthError
             status = {}

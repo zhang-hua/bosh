@@ -5,10 +5,11 @@ require 'bosh/deployer/ssh_server'
 module Bosh::Deployer
   class InstanceManager
     class Aws
-      def initialize(instance_manager, logger)
+      def initialize(instance_manager, config, logger)
         @instance_manager = instance_manager
         @logger = logger
-        properties = Config.cloud_options['properties']
+        @config = config
+        properties = config.cloud_options['properties']
 
         @registry = Registry.new(
           properties['registry']['endpoint'],
@@ -25,7 +26,7 @@ module Bosh::Deployer
       end
 
       def remote_tunnel
-        @remote_tunnel.create(instance_manager.bosh_ip, registry.port)
+        @remote_tunnel.create(instance_manager.client_services_ip, registry.port)
       end
 
       def disk_model
@@ -40,11 +41,11 @@ module Bosh::Deployer
         # and if it doesn't exist, use the bosh deployer
         # aws properties (cloud.properties.aws)
         properties['aws'] =
-          Config.spec_properties['aws'] ||
-          Config.cloud_options['properties']['aws'].dup
+          config.spec_properties['aws'] ||
+            config.cloud_options['properties']['aws'].dup
 
-        properties['aws']['registry'] = Config.cloud_options['properties']['registry']
-        properties['aws']['stemcell'] = Config.cloud_options['properties']['stemcell']
+        properties['aws']['registry'] = config.cloud_options['properties']['registry']
+        properties['aws']['stemcell'] = config.cloud_options['properties']['stemcell']
 
         spec.delete('networks')
       end
@@ -62,29 +63,16 @@ module Bosh::Deployer
         instance_manager.save_state
       end
 
-      def discover_bosh_ip
-        if instance_manager.state.vm_cid
-          # choose elastic IP over public, as any agent connecting to the
-          # deployed micro bosh will be cut off from the public IP when
-          # we re-deploy micro bosh
-          instance = instance_manager.cloud.ec2.instances[instance_manager.state.vm_cid]
-          if instance.has_elastic_ip?
-            ip = instance.elastic_ip.public_ip
-          else
-            ip = instance.public_ip_address
-          end
-
-          if ip && ip != instance_manager.bosh_ip
-            instance_manager.bosh_ip = ip
-            logger.info("discovered bosh ip=#{instance_manager.bosh_ip}")
-          end
-        end
-
-        instance_manager.bosh_ip
+      def client_services_ip
+        discover_client_services_ip
       end
 
-      def service_ip
-        instance_manager.cloud.ec2.instances[instance_manager.state.vm_cid].private_ip_address
+      def agent_services_ip
+        discover_client_services_ip
+      end
+
+      def internal_services_ip
+        config.internal_services_ip
       end
 
       # @return [Integer] size in MiB
@@ -98,13 +86,13 @@ module Bosh::Deployer
         # is a risk of conversion errors which lead to an unnecessary
         # disk migration, so we need to do a double conversion
         # here to avoid that
-        requested = (Config.resources['persistent_disk'] / 1024.0).ceil * 1024
+        requested = (config.resources['persistent_disk'] / 1024.0).ceil * 1024
         requested != disk_size(instance_manager.state.disk_cid)
       end
 
       private
 
-      attr_reader :registry, :instance_manager, :logger
+      attr_reader :registry, :instance_manager, :logger, :config
 
       def ssh_properties(properties)
         ssh_user = properties['aws']['ssh_user']
@@ -113,12 +101,32 @@ module Bosh::Deployer
 
         key = properties['aws']['ec2_private_key']
         err 'Missing properties.aws.ec2_private_key' unless key
+
         ssh_key = File.expand_path(key)
         unless File.exists?(ssh_key)
           err "properties.aws.ec2_private_key '#{key}' does not exist"
         end
 
         [ssh_key, ssh_port, ssh_user, ssh_wait]
+      end
+
+      def discover_client_services_ip
+        if instance_manager.state.vm_cid
+          # choose elastic IP over public, as any agent connecting to the
+          # deployed micro bosh will be cut off from the public IP when
+          # we re-deploy micro bosh
+          instance = instance_manager.cloud.ec2.instances[instance_manager.state.vm_cid]
+          if instance.has_elastic_ip?
+            ip = instance.elastic_ip.public_ip
+          else
+            ip = instance.public_ip_address
+          end
+
+          logger.info("discovered bosh ip=#{ip}")
+          ip
+        else
+          config.client_services_ip
+        end
       end
     end
   end
