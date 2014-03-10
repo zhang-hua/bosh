@@ -37,7 +37,7 @@ module Bosh::Director
 
         context 'when job representing an errand exists' do
           before { allow(deployment).to receive(:job).with('fake-errand-name').and_return(job) }
-          let(:job) { instance_double('Bosh::Director::DeploymentPlan::Job') }
+          let(:job) { instance_double('Bosh::Director::DeploymentPlan::Job', name: 'fake-errand-name') }
 
           context "when job can run as an errand (usually means lifecycle: errand)" do
             before { allow(job).to receive(:can_run_as_errand?).and_return(true) }
