@@ -63,7 +63,7 @@ describe 'Ubuntu OS image' do
     end
   end
 
-  context 'installed by base_apt' do
+  context 'installed by base_apt', exclude_on_warden: true do
     %w(
       upstart
       build-essential
@@ -142,7 +142,7 @@ describe 'Ubuntu OS image' do
     end
   end
 
-  context 'installed by system_kernel' do
+  context 'installed by system_kernel', exclude_on_warden: true do
     %w(
       linux-image-virtual-lts-backport-oneiric
       linux-headers-virtual-lts-backport-oneiric
