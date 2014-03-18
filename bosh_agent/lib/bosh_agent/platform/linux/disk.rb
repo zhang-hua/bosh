@@ -28,7 +28,7 @@ module Bosh::Agent
 
     def is_disk_blockdev?
       case @config.infrastructure_name
-        when "vsphere", "aws", "openstack"
+        when "vsphere", "vcloud", "aws", "openstack"
           true
         when "warden"
           false
@@ -40,7 +40,7 @@ module Bosh::Agent
     def mount_partition(partition, mount_point, options={})
       infra_option = {}
       case @config.infrastructure_name
-        when "vsphere", "aws", "openstack"
+        when "vsphere", "vcloud", "aws", "openstack"
           nil
         when "warden"
           infra_option = { bind_mount: true }
