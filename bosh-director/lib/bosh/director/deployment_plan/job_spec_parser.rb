@@ -21,6 +21,8 @@ module Bosh::Director
         @job = Job.new(@deployment)
 
         parse_name
+        parse_lifecycle
+
         parse_release
         parse_template
         parse_templates
@@ -45,6 +47,22 @@ module Bosh::Director
         @job.canonical_name = canonical(@job.name)
       end
 
+      def parse_lifecycle
+        lifecycle = safe_property(@job_spec, "lifecycle",
+          :class => String,
+          :optional => true,
+          :default => Job::DEFAULT_LIFECYCLE_PROFILE,
+        )
+
+        unless Job::VALID_LIFECYCLE_PROFILES.include?(lifecycle)
+          raise JobInvalidLifecycle,
+            "Invalid lifecycle `#{lifecycle}' for `#{@job.name}', " +
+            "valid lifecycle profiles are: #{Job::VALID_LIFECYCLE_PROFILES.join(', ')}"
+        end
+
+        @job.lifecycle = lifecycle
+      end
+
       def parse_release
         release_name = safe_property(@job_spec, "release", :class => String, :optional => true)
 
@@ -67,7 +85,7 @@ module Bosh::Director
         if template_names
           if template_names.is_a?(Array)
             @event_log.warn_deprecated(
-              "Please use `templates' when specifying multiple templates for a job. "\
+              "Please use `templates' when specifying multiple templates for a job. " +
               "`template' for multiple templates will soon be unsupported."
             )
           end

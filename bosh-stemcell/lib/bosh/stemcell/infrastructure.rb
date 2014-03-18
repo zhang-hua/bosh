@@ -12,6 +12,8 @@ module Bosh::Stemcell
           Warden.new
         when 'vcloud'
           Vcloud.new
+        when 'null'
+          NullInfrastructure.new
         else
           raise ArgumentError.new("invalid infrastructure: #{name}")
       end
@@ -36,6 +38,12 @@ module Bosh::Stemcell
           hypervisor == other.hypervisor &&
           default_disk_size == other.default_disk_size &&
           light? == other.light?
+      end
+    end
+
+    class NullInfrastructure < Base
+      def initialize
+        super(name: 'null', hypervisor: 'null', default_disk_size: -1)
       end
     end
 

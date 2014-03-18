@@ -49,8 +49,9 @@ func NewProvider(logger boshlog.Logger, dirProvider boshdirs.DirectoriesProvider
 		vitalsService,
 		linuxCdutil,
 		linuxDiskManager,
-		3*time.Minute,
 		centosNetManager,
+		500*time.Millisecond,
+		logger,
 	)
 
 	ubuntu := NewLinuxPlatform(
@@ -63,14 +64,15 @@ func NewProvider(logger boshlog.Logger, dirProvider boshdirs.DirectoriesProvider
 		vitalsService,
 		linuxCdutil,
 		linuxDiskManager,
-		3*time.Minute,
 		ubuntuNetManager,
+		500*time.Millisecond,
+		logger,
 	)
 
 	p.platforms = map[string]Platform{
 		"ubuntu": ubuntu,
 		"centos": centos,
-		"dummy":  NewDummyPlatform(sigarCollector, fs, runner, dirProvider),
+		"dummy":  NewDummyPlatform(sigarCollector, fs, runner, dirProvider, linuxDiskManager),
 	}
 	return
 }

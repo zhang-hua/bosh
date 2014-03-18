@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-#
-# Copyright (c) 2009-2012 VMware, Inc.
 
 set -e
 
@@ -11,20 +9,28 @@ source $base_dir/lib/prelude_bosh.bash
 mkdir -p $chroot/$bosh_dir/src
 
 # Libyaml
-yaml_basename=yaml-0.1.5
-yaml_archive=$yaml_basename.tar.gz
+mkdir -p $chroot/usr/lib64
 
-# hide libyaml here temporarily until we figure out how to remove the runtime dependency altogether
-mkdir -p $chroot/$bosh_dir/deps/$yaml_basename
-cp -r $dir/assets/$yaml_archive $chroot/$bosh_dir/src
+libyaml_basename=yaml-0.1.5
+libyaml_archive=$libyaml_basename.tar.gz
+
+cp -r $dir/assets/$libyaml_archive $chroot/$bosh_dir/src
 
 run_in_bosh_chroot $chroot "
 cd src
-tar zxvf $yaml_archive
-cd $yaml_basename
-CFLAGS='-fPIC' ./configure --prefix=$bosh_dir/deps/$yaml_basename --disable-shared
-make && make install
+tar zxvf $libyaml_archive
+cd $libyaml_basename
+./configure --prefix=/usr
+make -j4 && make install
+
+# Make symlinks for CentOS
 "
+
+for file in $(cd $chroot/usr/lib; ls libyaml*); do
+  if [ ! -e $chroot/usr/lib64/$file ]; then
+    cp -a $chroot/usr/lib/$file $chroot/usr/lib64/
+  fi
+done
 
 # Ruby
 ruby_basename=ruby-1.9.3-p484
@@ -37,7 +43,7 @@ cd src
 tar zxvf $ruby_archive
 cd $ruby_basename
 sed -i 's/\\(OSSL_SSL_METHOD_ENTRY(SSLv2[^3]\\)/\\/\\/\\1/g' ./ext/openssl/ossl_ssl.c
-LDFLAGS='-Wl,-rpath -Wl,$bosh_dir/deps/$yaml_basename' CFLAGS='-fPIC' ./configure --prefix=$bosh_dir --disable-install-doc --with-opt-dir=$bosh_dir/deps/$yaml_basename
+./configure --prefix=$bosh_dir --disable-install-doc
 make -j4 && make install
 "
 
@@ -71,6 +77,3 @@ run_in_bosh_chroot $chroot "
 cd src
 gem install $bundler_gem --local --no-ri --no-rdoc
 "
-
-# Clean up libyaml
-rm -rf /$bosh_dir/src

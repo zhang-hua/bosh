@@ -1,8 +1,12 @@
 package fakes
 
 import (
+	boshdevicepathresolver "bosh/infrastructure/device_path_resolver"
+	boshlog "bosh/logger"
 	boshcmd "bosh/platform/commands"
 	fakecmd "bosh/platform/commands/fakes"
+	boshdisk "bosh/platform/disk"
+	fakedisk "bosh/platform/disk/fakes"
 	boshstats "bosh/platform/stats"
 	fakestats "bosh/platform/stats/fakes"
 	boshvitals "bosh/platform/vitals"
@@ -11,6 +15,7 @@ import (
 	boshdir "bosh/settings/directories"
 	boshsys "bosh/system"
 	fakesys "bosh/system/fakes"
+	"time"
 )
 
 type FakePlatform struct {
@@ -20,6 +25,10 @@ type FakePlatform struct {
 	FakeCompressor     *fakecmd.FakeCompressor
 	FakeCopier         *fakecmd.FakeCopier
 	FakeVitalsService  *fakevitals.FakeService
+	FakeDiskManager    *fakedisk.FakeDiskManager
+	logger             boshlog.Logger
+
+	DevicePathResolver boshdevicepathresolver.DevicePathResolver
 
 	SetupRuntimeConfigurationWasInvoked bool
 
@@ -57,6 +66,8 @@ type FakePlatform struct {
 	NormalizeDiskPathFound    bool
 	NormalizeDiskPathRealPath string
 
+	ScsiDiskMap map[string]string
+
 	MigratePersistentDiskFromMountPoint string
 	MigratePersistentDiskToMountPoint   string
 
@@ -73,16 +84,20 @@ type FakePlatform struct {
 
 func NewFakePlatform() (platform *FakePlatform) {
 	platform = new(FakePlatform)
-	platform.Fs = &fakesys.FakeFileSystem{}
+	platform.Fs = fakesys.NewFakeFileSystem()
 	platform.Runner = &fakesys.FakeCmdRunner{}
 	platform.FakeStatsCollector = &fakestats.FakeStatsCollector{}
 	platform.FakeCompressor = fakecmd.NewFakeCompressor()
 	platform.FakeCopier = fakecmd.NewFakeCopier()
 	platform.FakeVitalsService = fakevitals.NewFakeService()
+	platform.FakeDiskManager = fakedisk.NewFakeDiskManager()
+
+	platform.DevicePathResolver = boshdevicepathresolver.NewFakeDevicePathResolver(1*time.Millisecond, platform.Fs)
 
 	platform.AddUserToGroupsGroups = make(map[string][]string)
 	platform.SetupSshPublicKeys = make(map[string]string)
 	platform.UserPasswords = make(map[string]string)
+	platform.ScsiDiskMap = make(map[string]string)
 	return
 }
 
@@ -112,6 +127,15 @@ func (p *FakePlatform) GetDirProvider() (dirProvider boshdir.DirectoriesProvider
 
 func (p *FakePlatform) GetVitalsService() (service boshvitals.Service) {
 	return p.FakeVitalsService
+}
+
+func (p *FakePlatform) GetDevicePathResolver() (devicePathResolver boshdevicepathresolver.DevicePathResolver) {
+	return p.DevicePathResolver
+}
+
+func (p *FakePlatform) SetDevicePathResolver(devicePathResolver boshdevicepathresolver.DevicePathResolver) (err error) {
+	p.DevicePathResolver = devicePathResolver
+	return
 }
 
 func (p *FakePlatform) SetupRuntimeConfiguration() (err error) {
@@ -242,4 +266,8 @@ func (p *FakePlatform) GetMonitCredentials() (username, password string, err err
 	username = p.GetMonitCredentialsUsername
 	password = p.GetMonitCredentialsPassword
 	return
+}
+
+func (p *FakePlatform) GetDiskManager() (diskManager boshdisk.Manager) {
+	return p.FakeDiskManager
 }

@@ -95,7 +95,7 @@ func (boot bootstrap) Run() (settingsService boshsettings.Service, err error) {
 	}
 
 	for _, devicePath := range settings.Disks.Persistent {
-		err = boot.platform.MountPersistentDisk(devicePath, boot.dirProvider.StoreDir())
+		err = boot.infrastructure.MountPersistentDisk(devicePath, boot.dirProvider.StoreDir())
 		if err != nil {
 			err = bosherr.WrapError(err, "Mounting persistent disk")
 			return
@@ -121,7 +121,7 @@ func (boot bootstrap) fetchInitialSettings() (settings boshsettings.Settings, er
 
 	existingSettingsJson, readError := boot.platform.GetFs().ReadFile(settingsPath)
 	if readError == nil {
-		err = json.Unmarshal([]byte(existingSettingsJson), &settings)
+		err = json.Unmarshal(existingSettingsJson, &settings)
 		return
 	}
 
@@ -137,7 +137,7 @@ func (boot bootstrap) fetchInitialSettings() (settings boshsettings.Settings, er
 		return
 	}
 
-	boot.fs.WriteToFile(settingsPath, string(settingsJson))
+	boot.fs.WriteFile(settingsPath, settingsJson)
 	return
 }
 

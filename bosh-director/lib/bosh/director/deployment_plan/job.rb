@@ -5,6 +5,9 @@ module Bosh::Director
     class Job
       include Bosh::Common::PropertyHelper
 
+      VALID_LIFECYCLE_PROFILES = %w(service errand)
+      DEFAULT_LIFECYCLE_PROFILE = 'service'
+
       # started, stopped and detached are real states
       # (persisting in DB and reflecting target instance state)
       # recreate and restart are two virtual states
@@ -14,6 +17,9 @@ module Bosh::Director
 
       # @return [String] Job name
       attr_accessor :name
+
+      # @return [String] Lifecycle profile
+      attr_accessor :lifecycle
 
       # @return [String] Job canonical name (mostly for DNS)
       attr_accessor :canonical_name
@@ -31,7 +37,7 @@ module Bosh::Director
       #   be run in
       attr_accessor :resource_pool
 
-      # @return [DeploymentPlan::Network Job default network
+      # @return [DeploymentPlan::Network] Job default network
       attr_accessor :default_network
 
       # @return [Array<DeploymentPlan::Template] Templates included into the job
@@ -66,12 +72,13 @@ module Bosh::Director
 
       attr_accessor :all_properties
 
-      # @param [Bosh::Director::DeploymentPlan] deployment Deployment plan
+      # @param [Bosh::Director::DeploymentPlan::Planner]
+      #   deployment Deployment plan
       # @param [Hash] job_spec Raw job spec from the deployment manifest
       # @return [Bosh::Director::DeploymentPlan::Job]
       def self.parse(deployment, job_spec, event_log)
-        job_parser = JobSpecParser.new(deployment, event_log)
-        job_parser.parse(job_spec)
+        parser = JobSpecParser.new(deployment, event_log)
+        parser.parse(job_spec)
       end
 
       # @param [Bosh::Director::DeploymentPlan] deployment Deployment plan
@@ -226,6 +233,35 @@ module Bosh::Director
                   'BOSH cannot currently collocate two packages with identical names from separate releases.'
           end
         end
+      end
+
+      def bind_unallocated_vms
+        instances.each do |instance|
+          instance.bind_unallocated_vm
+
+          # Now that we know every VM has been allocated and
+          # instance models are bound, we can sync the state.
+          instance.sync_state_with_db
+        end
+      end
+
+      def bind_instance_networks
+        instances.each do |instance|
+          instance.network_reservations.each do |net_name, reservation|
+            unless reservation.reserved?
+              network = @deployment.network(net_name)
+              network.reserve!(reservation, "`#{name}/#{instance.index}'")
+            end
+          end
+        end
+      end
+
+      def starts_on_deploy?
+        @lifecycle == 'service'
+      end
+
+      def can_run_as_errand?
+        @lifecycle == 'errand'
       end
 
       private

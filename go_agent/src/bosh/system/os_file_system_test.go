@@ -92,54 +92,94 @@ func init() {
 			assert.NoError(GinkgoT(), err)
 			assert.Equal(GinkgoT(), fileStat.Mode(), os.FileMode(0644))
 		})
-		It("write to file", func() {
 
-			osFs, _ := createOsFs()
-			testPath := filepath.Join(os.TempDir(), "subDir", "WriteToFileTestFile")
+		Context("the file already exists and is not write only", func() {
+			It("writes to file", func() {
 
-			_, err := os.Stat(testPath)
-			assert.Error(GinkgoT(), err)
+				osFs, _ := createOsFs()
+				testPath := filepath.Join(os.TempDir(), "subDir", "ConvergeFileContentsTestFile")
 
-			written, err := osFs.WriteToFile(testPath, "initial write")
-			assert.NoError(GinkgoT(), err)
-			assert.True(GinkgoT(), written)
-			defer os.Remove(testPath)
+				_, err := os.Stat(testPath)
+				assert.Error(GinkgoT(), err)
 
-			file, err := os.Open(testPath)
-			assert.NoError(GinkgoT(), err)
-			defer file.Close()
+				written, err := osFs.ConvergeFileContents(testPath, []byte("initial write"))
+				assert.NoError(GinkgoT(), err)
+				assert.True(GinkgoT(), written)
+				defer os.Remove(testPath)
 
-			assert.Equal(GinkgoT(), readFile(file), "initial write")
+				file, err := os.Open(testPath)
+				assert.NoError(GinkgoT(), err)
+				defer file.Close()
 
-			written, err = osFs.WriteToFile(testPath, "second write")
-			assert.NoError(GinkgoT(), err)
-			assert.True(GinkgoT(), written)
+				assert.Equal(GinkgoT(), readFile(file), "initial write")
 
-			file.Close()
-			file, err = os.Open(testPath)
-			assert.NoError(GinkgoT(), err)
+				written, err = osFs.ConvergeFileContents(testPath, []byte("second write"))
+				assert.NoError(GinkgoT(), err)
+				assert.True(GinkgoT(), written)
 
-			assert.Equal(GinkgoT(), readFile(file), "second write")
+				file.Close()
+				file, err = os.Open(testPath)
+				assert.NoError(GinkgoT(), err)
 
-			file.Close()
-			file, err = os.Open(testPath)
+				assert.Equal(GinkgoT(), readFile(file), "second write")
 
-			written, err = osFs.WriteToFile(testPath, "second write")
-			assert.NoError(GinkgoT(), err)
-			assert.False(GinkgoT(), written)
-			assert.Equal(GinkgoT(), readFile(file), "second write")
+				file.Close()
+				file, err = os.Open(testPath)
+
+				written, err = osFs.ConvergeFileContents(testPath, []byte("second write"))
+				assert.NoError(GinkgoT(), err)
+				assert.False(GinkgoT(), written)
+				assert.Equal(GinkgoT(), readFile(file), "second write")
+			})
 		})
+
+		Context("the file already exists and is write only", func() {
+			It("writes to file", func() {
+
+				osFs, _ := createOsFs()
+				testPath := filepath.Join(os.TempDir(), "subDir", "ConvergeFileContentsTestFile")
+
+				_, err := os.OpenFile(testPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(0200))
+				assert.NoError(GinkgoT(), err)
+				defer os.Remove(testPath)
+
+				err = osFs.WriteFile(testPath, []byte("test"))
+				assert.NoError(GinkgoT(), err)
+			})
+		})
+
+		Context("the file parent fir does not exist", func() {
+			BeforeEach(func() {
+				err := os.RemoveAll(filepath.Join(os.TempDir(), "subDirNew"))
+				assert.NoError(GinkgoT(), err)
+			})
+
+			AfterEach(func() {
+				err := os.RemoveAll(filepath.Join(os.TempDir(), "subDirNew"))
+				assert.NoError(GinkgoT(), err)
+			})
+
+			It("writes to file", func() {
+				osFs, _ := createOsFs()
+
+				testPath := filepath.Join(os.TempDir(), "subDirNew", "ConvergeFileContentsTestFile")
+
+				err := osFs.WriteFile(testPath, []byte("test"))
+				assert.NoError(GinkgoT(), err)
+			})
+		})
+
 		It("read file", func() {
 
 			osFs, _ := createOsFs()
 			testPath := filepath.Join(os.TempDir(), "ReadFileTestFile")
 
-			osFs.WriteToFile(testPath, "some contents")
+			osFs.WriteFileString(testPath, "some contents")
 			defer os.Remove(testPath)
 
 			content, err := osFs.ReadFile(testPath)
 			assert.NoError(GinkgoT(), err)
-			assert.Equal(GinkgoT(), "some contents", content)
+			assert.Equal(GinkgoT(), "some contents", string(content))
 		})
 		It("file exists", func() {
 
@@ -148,7 +188,7 @@ func init() {
 
 			assert.False(GinkgoT(), osFs.FileExists(testPath))
 
-			osFs.WriteToFile(testPath, "initial write")
+			osFs.WriteFileString(testPath, "initial write")
 			defer os.Remove(testPath)
 
 			assert.True(GinkgoT(), osFs.FileExists(testPath))
@@ -181,7 +221,7 @@ func init() {
 			os.Remove(containingDir)
 			symlinkPath := filepath.Join(containingDir, "SymlinkTestSymlink")
 
-			osFs.WriteToFile(filePath, "some content")
+			osFs.WriteFileString(filePath, "some content")
 			defer os.Remove(filePath)
 
 			osFs.Symlink(filePath, symlinkPath)
@@ -201,7 +241,7 @@ func init() {
 			filePath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1File")
 			symlinkPath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1Symlink")
 
-			osFs.WriteToFile(filePath, "some content")
+			osFs.WriteFileString(filePath, "some content")
 			defer os.Remove(filePath)
 
 			osFs.Symlink(filePath, symlinkPath)
@@ -224,10 +264,10 @@ func init() {
 			otherFilePath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1OtherFile")
 			symlinkPath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1Symlink")
 
-			osFs.WriteToFile(filePath, "some content")
+			osFs.WriteFileString(filePath, "some content")
 			defer os.Remove(filePath)
 
-			osFs.WriteToFile(otherFilePath, "other content")
+			osFs.WriteFileString(otherFilePath, "other content")
 			defer os.Remove(otherFilePath)
 
 			err := osFs.Symlink(otherFilePath, symlinkPath)
@@ -252,10 +292,10 @@ func init() {
 			filePath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1File")
 			symlinkPath := filepath.Join(os.TempDir(), "SymlinkTestIdempotent1Symlink")
 
-			osFs.WriteToFile(filePath, "some content")
+			osFs.WriteFileString(filePath, "some content")
 			defer os.Remove(filePath)
 
-			osFs.WriteToFile(symlinkPath, "some other content")
+			osFs.WriteFileString(symlinkPath, "some other content")
 			defer os.Remove(symlinkPath)
 
 			err := osFs.Symlink(filePath, symlinkPath)
@@ -279,7 +319,7 @@ func init() {
 			os.Remove(containingDir)
 			symlinkPath := filepath.Join(containingDir, "SymlinkTestSymlink")
 
-			osFs.WriteToFile(filePath, "some content")
+			osFs.WriteFileString(filePath, "some content")
 			defer os.Remove(filePath)
 
 			err := osFs.Symlink(filePath, symlinkPath)
@@ -336,11 +376,11 @@ func init() {
 			err := osFs.CopyDirEntries(srcPath, destPath)
 			assert.NoError(GinkgoT(), err)
 
-			fooContent, err := osFs.ReadFile(destPath + "/foo.txt")
+			fooContent, err := osFs.ReadFileString(destPath + "/foo.txt")
 			assert.NoError(GinkgoT(), err)
 			assert.Equal(GinkgoT(), "foo\n", fooContent)
 
-			barContent, err := osFs.ReadFile(destPath + "/bar/bar.txt")
+			barContent, err := osFs.ReadFileString(destPath + "/bar/bar.txt")
 			assert.NoError(GinkgoT(), err)
 			assert.Equal(GinkgoT(), "bar\n", barContent)
 
@@ -356,7 +396,7 @@ func init() {
 
 			err = osFs.CopyFile(srcPath, dstFile.Name())
 
-			fooContent, err := osFs.ReadFile(dstFile.Name())
+			fooContent, err := osFs.ReadFileString(dstFile.Name())
 			assert.NoError(GinkgoT(), err)
 			assert.Equal(GinkgoT(), fooContent, "foo\n")
 		})

@@ -1,109 +1,7 @@
 require 'spec_helper'
 
-describe 'CentOs Stemcell' do
-  it_behaves_like 'a stemcell'
-
-  describe package('apt') do
-    it { should_not be_installed }
-  end
-
-  describe package('rpm') do
-    it { should be_installed }
-  end
-
-  context 'installed by base_centos' do
-    %w(
-      centos-release
-      epel-release
-    ).each do |pkg|
-      describe package(pkg) do
-        it { should be_installed }
-      end
-    end
-
-    describe file('/etc/sysconfig/network') do
-      it { should be_file }
-    end
-  end
-
-  context 'installed by base_yum' do
-    %w(
-      upstart
-      openssl-devel
-      lsof
-      quota
-      rsync
-      strace
-      iptables
-      sysstat
-      tcpdump
-      dhclient
-      zip
-      traceroute
-      gdb
-      curl
-      readline-devel
-      flex
-      openssh-server
-      wget
-      libxml2
-      libxml2-devel
-      libxslt
-      libxslt-devel
-      psmisc
-      unzip
-      bison
-      bzip2-devel
-      libcap-devel
-      cmake
-      rpm-build
-      rpmdevtools
-      glibc-static
-      runit
-      sudo
-      libuuid-devel
-      nc
-    ).each do |pkg|
-      describe package(pkg) do
-        it { should be_installed }
-      end
-    end
-  end
-
-  context 'not included in stemcell' do
-    describe package('libyaml-devel') do
-      it { should_not be_installed }
-    end
-
-    describe package('libyaml') do
-      it { should_not be_installed }
-    end
-  end
-
-  context 'installed by system_grub' do
-    describe package('grub') do
-      it { should be_installed }
-    end
-  end
-
-  %w(e2fs_stage1_5 stage1 stage2).each do |grub_stage|
-    describe file("/boot/grub/#{grub_stage}") do
-      it { should be_file }
-    end
-  end
-
-  context 'installed by system_kernel' do
-    %w(
-      kernel
-      kernel-headers
-    ).each do |pkg|
-      describe package(pkg) do
-        it { should be_installed }
-      end
-    end
-  end
-
-  context 'installed by image_install_grub', exclude_on_warden: true do
+describe 'CentOS stemcell' do
+  context 'installed by image_install_grub' do
     describe file('/etc/fstab') do
       it { should be_file }
       it { should contain 'UUID=' }
@@ -145,7 +43,7 @@ describe 'CentOs Stemcell' do
     end
   end
 
-  context 'installed by system-aws-network', exclude_on_vsphere: true, exclude_on_vcloud: true, exclude_on_warden: true do
+  context 'with system-aws-network', exclude_on_vsphere: true, exclude_on_vcloud: true, exclude_on_warden: true do
     describe file('/etc/sysconfig/network') do
       it { should be_file }
       it { should contain 'NETWORKING=yes' }
@@ -160,14 +58,6 @@ describe 'CentOs Stemcell' do
       it { should contain 'BOOTPROTO=dhcp' }
       it { should contain 'ONBOOT=on' }
       it { should contain 'TYPE="Ethernet"' }
-    end
-  end
-
-  context 'readahead-collector should be disabled' do
-    describe file('/etc/sysconfig/readahead') do
-      it { should be_file }
-      it { should contain 'READAHEAD_COLLECT="no"' }
-      it { should contain 'READAHEAD_COLLECT_ON_RPM="no"' }
     end
   end
 end

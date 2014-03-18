@@ -177,14 +177,14 @@ func init() {
 
 			compressor.DecompressFileToDirCallBack = func() {
 				fs.MkdirAll("fake-tmp-dir/fake-path-in-archive", os.FileMode(0))
-				fs.WriteToFile("fake-tmp-dir/fake-path-in-archive/file", "file-contents")
+				fs.WriteFileString("fake-tmp-dir/fake-path-in-archive/file", "file-contents")
 			}
 
 			err := applier.Apply(job)
 			assert.NoError(GinkgoT(), err)
 			fileInArchiveStat := fs.GetFileTestStat("fake-install-dir/file")
 			assert.NotNil(GinkgoT(), fileInArchiveStat)
-			assert.Equal(GinkgoT(), "file-contents", fileInArchiveStat.Content)
+			assert.Equal(GinkgoT(), []byte("file-contents"), fileInArchiveStat.Content)
 		})
 		It("apply sets executable bit for files in bin", func() {
 
@@ -201,17 +201,15 @@ func init() {
 			bundle.InstallPath = "fake-install-dir"
 
 			compressor.DecompressFileToDirCallBack = func() {
-				fs.WriteToFile("fake-tmp-dir/fake-path-in-archive/bin/test1", "")
-				fs.WriteToFile("fake-tmp-dir/fake-path-in-archive/bin/test2", "")
-				fs.WriteToFile("fake-tmp-dir/fake-path-in-archive/config/test", "")
+				fs.WriteFile("fake-tmp-dir/fake-path-in-archive/bin/test1", []byte{})
+				fs.WriteFile("fake-tmp-dir/fake-path-in-archive/bin/test2", []byte{})
+				fs.WriteFile("fake-tmp-dir/fake-path-in-archive/config/test", []byte{})
 			}
 
-			fs.GlobPaths = []string{"fake-install-dir/bin/test1", "fake-install-dir/bin/test2"}
+			fs.SetGlob("fake-install-dir/bin/*", []string{"fake-install-dir/bin/test1", "fake-install-dir/bin/test2"})
 
 			err := applier.Apply(job)
 			assert.NoError(GinkgoT(), err)
-
-			assert.Equal(GinkgoT(), "fake-install-dir/bin/*", fs.GlobPattern)
 
 			testBin1Stats := fs.GetFileTestStat("fake-install-dir/bin/test1")
 			assert.NotNil(GinkgoT(), testBin1Stats)
@@ -248,8 +246,8 @@ func init() {
 			job, bundle := buildJob(jobsBc)
 
 			fs := fakesys.NewFakeFileSystem()
-			fs.WriteToFile("/path/to/job/monit", "some conf")
-			fs.GlobPaths = []string{"/path/to/job/subjob.monit"}
+			fs.WriteFileString("/path/to/job/monit", "some conf")
+			fs.SetGlob("/path/to/job/*.monit", []string{"/path/to/job/subjob.monit"})
 
 			bundle.GetDirPath = "/path/to/job"
 			bundle.GetDirFs = fs
@@ -257,7 +255,6 @@ func init() {
 			err := applier.Configure(job, 0)
 			assert.NoError(GinkgoT(), err)
 
-			assert.Equal(GinkgoT(), "/path/to/job/*.monit", fs.GlobPattern)
 			assert.Equal(GinkgoT(), 2, len(jobSupervisor.AddJobArgs))
 
 			firstArgs := fakejobsuper.AddJobArgs{
