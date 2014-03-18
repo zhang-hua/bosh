@@ -35,8 +35,6 @@ then
   run_in_chroot $chroot "
   dpkg-divert --local --rename --add /usr/sbin/service
 "
-  # This is a Hacky way to force Warden in Warden to use overlayfs for now
-  sed -i s/lucid/precise/ $chroot/etc/lsb-release
 # Centos Stemcell
 else
   # Add runsvdir-start for Centos to bootstrap agent
@@ -44,9 +42,6 @@ else
   run_in_chroot $chroot "
   chmod +x /usr/sbin/runsvdir-start
   "
-  # Centos stemcll hack to force Warden in Warden to use overlayfs for now
-  echo "DISTRIB_CODENAME=precise" > $chroot/etc/lsb-release
-  echo "Ubuntu (fake tag to fool warden)" >> $chroot/etc/issue
 fi
 
 cp -f $assets_dir/service $chroot/usr/sbin/service
