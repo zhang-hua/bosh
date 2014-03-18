@@ -84,12 +84,12 @@ describe Bosh::Agent::Platform::Linux::Disk do
           disk_manager.mount_persistent_disk(2)
         end
       end
-    end
 
-    it 'persistent disk is_disk_blockdev' do
-      expect(disk_manager.is_disk_blockdev?).to be true
-    end
+      it 'persistent disk is_disk_blockdev' do
+        expect(disk_manager.is_disk_blockdev?).to be true
+      end
 
+    end
   end
 
   context 'AWS' do
