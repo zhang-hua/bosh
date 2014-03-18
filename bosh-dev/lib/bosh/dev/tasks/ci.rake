@@ -29,21 +29,6 @@ namespace :ci do
     gems_generator.generate_and_upload
   end
 
-  desc 'Build a stemcell locally for the given :infrastructure, and :operating_system'
-  task :build_local_stemcell, [:infrastructure_name, :operating_system_name, :agent_name] do |_, args|
-    require 'bosh/dev/stemcell_builder'
-    require 'bosh/dev/build'
-    require 'bosh/dev/gems_generator'
-    build = Bosh::Dev::Build.candidate
-    gems_generator = Bosh::Dev::GemsGenerator.new(build)
-    gems_generator.generate_without_upload
-
-    stemcell_builder = Bosh::Dev::StemcellBuilder.for_candidate_build(
-      args.infrastructure_name, args.operating_system_name, args.agent_name)
-    stemcell_file = stemcell_builder.build_stemcell
-  end
-
-
   desc 'Publish CI pipeline BOSH release to S3'
   task publish_bosh_release: [:publish_pipeline_gems] do
     require 'bosh/dev/build'
