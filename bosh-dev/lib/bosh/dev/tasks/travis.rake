@@ -6,6 +6,7 @@ namespace :travis do
 
     ENV['PATH'] = "#{File.absolute_path('tmp/go/bin')}:#{ENV['PATH']}"
 
+    sh 'go get code.google.com/p/go.tools/cmd/vet'
     sh 'go install code.google.com/p/go.tools/cmd/vet'
   end
 end
