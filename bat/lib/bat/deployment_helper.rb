@@ -19,7 +19,7 @@ module Bat
       # It is used for negative testing.
       @spec['properties']['batlight'] ||= {}
       @spec['properties']['batlight']['missing'] = 'nope'
-      @spec['properties']['dns_nameserver'] = bosh_dns_host if bosh_dns_host
+      @spec['properties']['dns'] = [@env.dns_host]
     end
 
     # if with_deployment() is called without a block, it is up to the caller to
@@ -85,6 +85,10 @@ module Bat
       @spec['properties']['name'] = name
     end
 
+    def use_additional_dns_server(dns_server)
+      @spec['properties']['dns'] = [dns_server, @env.dns_host]
+    end
+
     def deployment_name
       @spec.fetch('properties', {}).fetch('name', 'bat')
     end
@@ -122,8 +126,9 @@ module Bat
     end
 
     def get_task_id(output, state = 'done')
-      match = output.match(/Task (\d+) #{state}/)
-      match.should_not be_nil
+      task_regex = /Task (\d+) #{state}/
+      expect(output).to match(task_regex)
+      match = output.match(task_regex)
       match[1]
     end
 

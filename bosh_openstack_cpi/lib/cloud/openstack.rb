@@ -30,6 +30,8 @@ require "cloud/openstack/network"
 require "cloud/openstack/dynamic_network"
 require "cloud/openstack/manual_network"
 require "cloud/openstack/vip_network"
+require "cloud/openstack/excon_logging_instrumentor"
+require "cloud/openstack/redacted_params"
 
 module Bosh
   module Clouds

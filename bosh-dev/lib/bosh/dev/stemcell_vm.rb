@@ -18,12 +18,12 @@ module Bosh::Dev
         cd bosh-stemcell
         [ -e .vagrant/machines/remote/aws/id ] && vagrant destroy #{vm_name} --force
         vagrant up #{vm_name} --provider #{provider}
+        [ -e .vagrant/machines/remote/aws/id ] && cat .vagrant/machines/remote/aws/id
 
         vagrant ssh -c "
           bash -l -c '
             set -eu
             cd /bosh
-            bundle install --local
 
             #{exports.join("\n            ")}
 

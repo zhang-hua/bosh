@@ -1,6 +1,8 @@
 package action
 
 import (
+	"errors"
+
 	boshas "bosh/agent/applier/applyspec"
 	bosherr "bosh/errors"
 	boshjobsuper "bosh/jobsupervisor"
@@ -17,7 +19,8 @@ type GetStateAction struct {
 	ntpService    boshntp.Service
 }
 
-func NewGetState(settings boshsettings.Service,
+func NewGetState(
+	settings boshsettings.Service,
 	specService boshas.V1Service,
 	jobSupervisor boshjobsuper.JobSupervisor,
 	vitalsService boshvitals.Service,
@@ -32,6 +35,10 @@ func NewGetState(settings boshsettings.Service,
 }
 
 func (a GetStateAction) IsAsynchronous() bool {
+	return false
+}
+
+func (a GetStateAction) IsPersistent() bool {
 	return false
 }
 
@@ -75,4 +82,8 @@ func (a GetStateAction) Run(filters ...string) (value GetStateV1ApplySpec, err e
 	}
 
 	return
+}
+
+func (a GetStateAction) Resume() (interface{}, error) {
+	return nil, errors.New("not supported")
 }

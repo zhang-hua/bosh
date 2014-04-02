@@ -25,6 +25,7 @@ type FakeFileSystem struct {
 
 	FilesToOpen map[string]*os.File
 
+	ReadFileError    error
 	WriteToFileError error
 	MkdirAllError    error
 	SymlinkError     error
@@ -38,6 +39,8 @@ type FakeFileSystem struct {
 	RenameError    error
 	RenameOldPaths []string
 	RenameNewPaths []string
+
+	RemoveAllError error
 
 	TempFileError  error
 	ReturnTempFile *os.File
@@ -142,14 +145,17 @@ func (fs *FakeFileSystem) ReadFileString(path string) (content string, err error
 	return
 }
 
-func (fs *FakeFileSystem) ReadFile(path string) (content []byte, err error) {
+func (fs *FakeFileSystem) ReadFile(path string) ([]byte, error) {
 	stats := fs.GetFileTestStat(path)
 	if stats != nil {
-		content = stats.Content
+		if fs.ReadFileError != nil {
+			return nil, fs.ReadFileError
+		} else {
+			return stats.Content, nil
+		}
 	} else {
-		err = errors.New("File not found")
+		return nil, errors.New("File not found")
 	}
-	return
 }
 
 func (fs *FakeFileSystem) FileExists(path string) bool {
@@ -281,6 +287,10 @@ func (fs *FakeFileSystem) TempDir(prefix string) (string, error) {
 }
 
 func (fs *FakeFileSystem) RemoveAll(path string) (err error) {
+	if fs.RemoveAllError != nil {
+		return fs.RemoveAllError
+	}
+
 	filesToRemove := []string{}
 
 	for name, _ := range fs.Files {

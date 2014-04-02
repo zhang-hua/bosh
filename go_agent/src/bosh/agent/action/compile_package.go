@@ -1,6 +1,8 @@
 package action
 
 import (
+	"errors"
+
 	boshmodels "bosh/agent/applier/models"
 	boshcomp "bosh/agent/compiler"
 	bosherr "bosh/errors"
@@ -17,6 +19,10 @@ func NewCompilePackage(compiler boshcomp.Compiler) (compilePackage CompilePackag
 
 func (a CompilePackageAction) IsAsynchronous() bool {
 	return true
+}
+
+func (a CompilePackageAction) IsPersistent() bool {
+	return false
 }
 
 func (a CompilePackageAction) Run(blobId, sha1, name, version string, deps boshcomp.Dependencies) (val map[string]interface{}, err error) {
@@ -55,4 +61,8 @@ func (a CompilePackageAction) Run(blobId, sha1, name, version string, deps boshc
 		"result": result,
 	}
 	return
+}
+
+func (a CompilePackageAction) Resume() (interface{}, error) {
+	return nil, errors.New("not supported")
 }

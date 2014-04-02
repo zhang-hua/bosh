@@ -1,6 +1,8 @@
 package action
 
 import (
+	"errors"
+
 	bosherr "bosh/errors"
 	boshsettings "bosh/settings"
 	boshdirs "bosh/settings/directories"
@@ -21,7 +23,12 @@ type MountDiskAction struct {
 	dirProvider boshdirs.DirectoriesProvider
 }
 
-func NewMountDisk(settings boshsettings.Service, diskMounter diskMounter, mountPoints mountPoints, dirProvider boshdirs.DirectoriesProvider) (mountDisk MountDiskAction) {
+func NewMountDisk(
+	settings boshsettings.Service,
+	diskMounter diskMounter,
+	mountPoints mountPoints,
+	dirProvider boshdirs.DirectoriesProvider,
+) (mountDisk MountDiskAction) {
 	mountDisk.settings = settings
 	mountDisk.diskMounter = diskMounter
 	mountDisk.mountPoints = mountPoints
@@ -33,8 +40,12 @@ func (a MountDiskAction) IsAsynchronous() bool {
 	return true
 }
 
+func (a MountDiskAction) IsPersistent() bool {
+	return false
+}
+
 func (a MountDiskAction) Run(disk_cid string) (value interface{}, err error) {
-	err = a.settings.Refresh()
+	err = a.settings.LoadSettings()
 	if err != nil {
 		err = bosherr.WrapError(err, "Refreshing the settings")
 		return
@@ -66,4 +77,8 @@ func (a MountDiskAction) Run(disk_cid string) (value interface{}, err error) {
 
 	value = make(map[string]string)
 	return
+}
+
+func (a MountDiskAction) Resume() (interface{}, error) {
+	return nil, errors.New("not supported")
 }

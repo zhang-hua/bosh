@@ -1,10 +1,14 @@
 package action_test
 
 import (
-	. "bosh/agent/action"
 	"errors"
+
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+
+	. "bosh/agent/action"
+	fakeaction "bosh/agent/action/fakes"
 )
 
 type valueType struct {
@@ -32,15 +36,20 @@ func (a *actionWithGoodRunMethod) IsAsynchronous() bool {
 	return false
 }
 
-func (a *actionWithGoodRunMethod) Run(subAction string, someId int, extraArgs argsType, sliceArgs []string) (value valueType, err error) {
+func (a *actionWithGoodRunMethod) IsPersistent() bool {
+	return false
+}
+
+func (a *actionWithGoodRunMethod) Run(subAction string, someId int, extraArgs argsType, sliceArgs []string) (valueType, error) {
 	a.SubAction = subAction
 	a.SomeId = someId
 	a.ExtraArgs = extraArgs
 	a.SliceArgs = sliceArgs
+	return a.Value, a.Err
+}
 
-	value = a.Value
-	err = a.Err
-	return
+func (a *actionWithGoodRunMethod) Resume() (interface{}, error) {
+	return nil, nil
 }
 
 type actionWithOptionalRunArgument struct {
@@ -55,45 +64,72 @@ func (a *actionWithOptionalRunArgument) IsAsynchronous() bool {
 	return false
 }
 
-func (a *actionWithOptionalRunArgument) Run(subAction string, optionalArgs ...argsType) (value valueType, err error) {
+func (a *actionWithOptionalRunArgument) IsPersistent() bool {
+	return false
+}
+
+func (a *actionWithOptionalRunArgument) Run(subAction string, optionalArgs ...argsType) (valueType, error) {
 	a.SubAction = subAction
 	a.OptionalArgs = optionalArgs
-
-	value = a.Value
-	err = a.Err
-	return
+	return a.Value, a.Err
 }
 
-type actionWithoutRunMethod struct {
+func (a *actionWithOptionalRunArgument) Resume() (interface{}, error) {
+	return nil, nil
 }
+
+type actionWithoutRunMethod struct{}
 
 func (a *actionWithoutRunMethod) IsAsynchronous() bool {
 	return false
 }
 
-type actionWithOneRunReturnValue struct {
+func (a *actionWithoutRunMethod) IsPersistent() bool {
+	return false
 }
+
+func (a *actionWithoutRunMethod) Resume() (interface{}, error) {
+	return nil, nil
+}
+
+type actionWithOneRunReturnValue struct{}
 
 func (a *actionWithOneRunReturnValue) IsAsynchronous() bool {
 	return false
 }
 
-func (a *actionWithOneRunReturnValue) Run() (err error) {
-	return
+func (a *actionWithOneRunReturnValue) IsPersistent() bool {
+	return false
 }
 
-type actionWithSecondReturnValueNotError struct {
+func (a *actionWithOneRunReturnValue) Run() error {
+	return nil
 }
+
+func (a *actionWithOneRunReturnValue) Resume() (interface{}, error) {
+	return nil, nil
+}
+
+type actionWithSecondReturnValueNotError struct{}
 
 func (a *actionWithSecondReturnValueNotError) IsAsynchronous() bool {
 	return false
 }
 
-func (a *actionWithSecondReturnValueNotError) Run() (value interface{}, otherValue string) {
-	return
+func (a *actionWithSecondReturnValueNotError) IsPersistent() bool {
+	return false
 }
+
+func (a *actionWithSecondReturnValueNotError) Run() (interface{}, string) {
+	return nil, ""
+}
+
+func (a *actionWithSecondReturnValueNotError) Resume() (interface{}, error) {
+	return nil, nil
+}
+
 func init() {
-	Describe("Testing with Ginkgo", func() {
+	Describe("concreteRunner", func() {
 		It("runner run parses the payload", func() {
 			runner := NewRunner()
 
@@ -102,14 +138,14 @@ func init() {
 
 			action := &actionWithGoodRunMethod{Value: expectedValue, Err: expectedErr}
 			payload := `{
-		"arguments":[
-			"setup",
-			 123,
-			 {"user":"rob","pwd":"rob123","id":12},
-			 ["a","b","c"],
-			 456
-		]
-	}`
+				"arguments":[
+					"setup",
+					 123,
+					 {"user":"rob","pwd":"rob123","id":12},
+					 ["a","b","c"],
+					 456
+				]
+			}`
 
 			value, err := runner.Run(action, []byte(payload))
 			assert.Error(GinkgoT(), err)
@@ -196,6 +232,22 @@ func init() {
 			runner := NewRunner()
 			_, err := runner.Run(&actionWithSecondReturnValueNotError{}, []byte(`{"arguments":[]}`))
 			assert.Error(GinkgoT(), err)
+		})
+
+		Describe("Resume", func() {
+			It("calls Resume() on action", func() {
+				runner := NewRunner()
+				testAction := &fakeaction.TestAction{
+					ResumeErr:   errors.New("fake-action-error"),
+					ResumeValue: "fake-action-resume-value",
+				}
+
+				value, err := runner.Resume(testAction, []byte{})
+				Expect(value).To(Equal("fake-action-resume-value"))
+				Expect(err.Error()).To(Equal("fake-action-error"))
+
+				Expect(testAction.Resumed).To(BeTrue())
+			})
 		})
 	})
 }

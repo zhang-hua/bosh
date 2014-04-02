@@ -1,10 +1,12 @@
 package action
 
 import (
+	"errors"
+	"fmt"
+
 	bosherr "bosh/errors"
 	boshplatform "bosh/platform"
 	boshsettings "bosh/settings"
-	"fmt"
 )
 
 type UnmountDiskAction struct {
@@ -20,6 +22,10 @@ func NewUnmountDisk(settings boshsettings.Service, platform boshplatform.Platfor
 
 func (a UnmountDiskAction) IsAsynchronous() bool {
 	return true
+}
+
+func (a UnmountDiskAction) IsPersistent() bool {
+	return false
 }
 
 func (a UnmountDiskAction) Run(volumeId string) (value interface{}, err error) {
@@ -48,4 +54,8 @@ func (a UnmountDiskAction) Run(volumeId string) (value interface{}, err error) {
 
 	value = valueType{Message: msg}
 	return
+}
+
+func (a UnmountDiskAction) Resume() (interface{}, error) {
+	return nil, errors.New("not supported")
 }

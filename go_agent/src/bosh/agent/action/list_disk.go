@@ -1,6 +1,8 @@
 package action
 
 import (
+	"errors"
+
 	bosherr "bosh/errors"
 	boshlog "bosh/logger"
 	boshplatform "bosh/platform"
@@ -21,6 +23,10 @@ func NewListDisk(settings boshsettings.Service, platform boshplatform.Platform, 
 }
 
 func (a ListDiskAction) IsAsynchronous() bool {
+	return false
+}
+
+func (a ListDiskAction) IsPersistent() bool {
 	return false
 }
 
@@ -45,4 +51,8 @@ func (a ListDiskAction) Run() (value interface{}, err error) {
 
 	value = volumeIds
 	return
+}
+
+func (a ListDiskAction) Resume() (interface{}, error) {
+	return nil, errors.New("not supported")
 }

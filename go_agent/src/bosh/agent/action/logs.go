@@ -1,11 +1,13 @@
 package action
 
 import (
+	"errors"
+	"path/filepath"
+
 	boshblob "bosh/blobstore"
 	bosherr "bosh/errors"
 	boshcmd "bosh/platform/commands"
 	boshdirs "bosh/settings/directories"
-	"path/filepath"
 )
 
 type LogsAction struct {
@@ -15,7 +17,12 @@ type LogsAction struct {
 	settingsDir boshdirs.DirectoriesProvider
 }
 
-func NewLogs(compressor boshcmd.Compressor, copier boshcmd.Copier, blobstore boshblob.Blobstore, settingsDir boshdirs.DirectoriesProvider) (action LogsAction) {
+func NewLogs(
+	compressor boshcmd.Compressor,
+	copier boshcmd.Copier,
+	blobstore boshblob.Blobstore,
+	settingsDir boshdirs.DirectoriesProvider,
+) (action LogsAction) {
 	action.compressor = compressor
 	action.copier = copier
 	action.blobstore = blobstore
@@ -25,6 +32,10 @@ func NewLogs(compressor boshcmd.Compressor, copier boshcmd.Copier, blobstore bos
 
 func (a LogsAction) IsAsynchronous() bool {
 	return true
+}
+
+func (a LogsAction) IsPersistent() bool {
+	return false
 }
 
 func (a LogsAction) Run(logType string, filters []string) (value interface{}, err error) {
@@ -68,4 +79,8 @@ func (a LogsAction) Run(logType string, filters []string) (value interface{}, er
 
 	value = map[string]string{"blobstore_id": blobId}
 	return
+}
+
+func (a LogsAction) Resume() (interface{}, error) {
+	return nil, errors.New("not supported")
 }

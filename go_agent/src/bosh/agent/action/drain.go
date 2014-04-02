@@ -1,6 +1,8 @@
 package action
 
 import (
+	"errors"
+
 	boshas "bosh/agent/applier/applyspec"
 	boshdrain "bosh/agent/drain"
 	bosherr "bosh/errors"
@@ -22,6 +24,10 @@ func NewDrain(notifier boshnotif.Notifier, specService boshas.V1Service, drainSc
 
 func (a DrainAction) IsAsynchronous() bool {
 	return true
+}
+
+func (a DrainAction) IsPersistent() bool {
+	return false
 }
 
 type DrainType string
@@ -78,4 +84,8 @@ func (a DrainAction) Run(drainType DrainType, newSpecs ...boshas.V1ApplySpec) (v
 		return
 	}
 	return
+}
+
+func (a DrainAction) Resume() (interface{}, error) {
+	return nil, errors.New("not supported")
 }

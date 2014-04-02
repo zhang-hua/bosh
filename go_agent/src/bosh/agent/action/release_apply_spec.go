@@ -1,9 +1,11 @@
 package action
 
 import (
+	"encoding/json"
+	"errors"
+
 	bosherr "bosh/errors"
 	boshplatform "bosh/platform"
-	"encoding/json"
 )
 
 type ReleaseApplySpecAction struct {
@@ -16,6 +18,10 @@ func NewReleaseApplySpec(platform boshplatform.Platform) (action ReleaseApplySpe
 }
 
 func (a ReleaseApplySpecAction) IsAsynchronous() bool {
+	return false
+}
+
+func (a ReleaseApplySpecAction) IsPersistent() bool {
 	return false
 }
 
@@ -34,4 +40,8 @@ func (a ReleaseApplySpecAction) Run() (value interface{}, err error) {
 	}
 
 	return
+}
+
+func (a ReleaseApplySpecAction) Resume() (interface{}, error) {
+	return nil, errors.New("not supported")
 }

@@ -53,30 +53,6 @@ describe 'with release, stemcell and deployment' do
     end
   end
 
-  describe 'dns' do
-    before(:all) { @dns = Resolv::DNS.new(nameserver: @env.director) }
-    before { pending 'director not configured with dns' unless dns? }
-
-    context 'external' do
-      it 'should do forward lookups' do
-        address = @dns.getaddress("0.batlight.static.bat.#{bosh_tld}").to_s
-        address.should eq(static_ip)
-      end
-
-      it 'should do reverse lookups' do
-        name = @dns.getname(static_ip).to_s
-        name.should eq("0.batlight.static.bat.#{bosh_tld}")
-      end
-    end
-
-    context 'internal' do
-      it 'should be able to look up its own name', ssh: true do
-        cmd = 'dig +short 0.batlight.static.bat.bosh a 0.batlight.static.bat.microbosh a'
-        ssh(static_ip, 'vcap', cmd, ssh_options).should include(static_ip)
-      end
-    end
-  end
-
   describe 'job' do
     it 'should recreate a job' do
       bosh_safe('recreate batlight 0').should succeed_with /batlight\/0 has been recreated/
@@ -120,81 +96,6 @@ describe 'with release, stemcell and deployment' do
       expect(file_names).to include('logs.tgz')
       expect(file_names).to include('task_logs.tgz')
       expect(file_names).to include('director_db.sql')
-    end
-  end
-
-  describe 'managed properties' do
-    context 'with no property' do
-      it 'should not return a value' do
-        result = bosh_safe('get property doesntexist')
-        result.should_not succeed
-        result.output.should match /Error 110003/
-      end
-
-      it 'should set a property' do
-        result = bosh_safe('set property newprop something')
-        result.should succeed
-        result.output.should match /This will be a new property/
-        result.output.should match /Property `newprop' set to `something'/
-      end
-    end
-
-    context 'with existing property' do
-      it 'should set a property' do
-        bosh_safe('set property prop1 value1').should succeed
-        result = bosh_safe('set property prop1 value2')
-        result.should succeed
-        result.output.should match /Current `prop1' value is `value1'/
-        result.output.should match /Property `prop1' set to `value2'/
-      end
-
-      it 'should get a value' do
-        bosh_safe('set property prop2 value3').should succeed
-        bosh_safe('get property prop2').should succeed_with /Property `prop2' value is `value3'/
-      end
-    end
-  end
-
-  describe 'release' do
-    describe 'upload' do
-      after { bosh("delete release #{prev_rel.name} #{prev_rel.version}", on_error: :return) }
-      let(:prev_rel) { @requirements.previous_release }
-
-      it 'should succeed when the release is valid' do
-        bosh_safe("upload release #{prev_rel.to_path}").should succeed_with /Release uploaded/
-      end
-
-      it 'should fail when the release already is uploaded' do
-        result = bosh_safe("upload release #{@requirements.release.to_path}")
-        result.should_not succeed
-        result.output.should match /This release version has already been uploaded/
-      end
-    end
-
-    describe 'delete' do
-      context 'in use' do
-        it 'should not be possible to delete a release that is in use' do
-          result = bosh_safe("delete release #{@requirements.release.name}")
-          result.should_not succeed
-          result.output.should match /Error 30007/
-        end
-
-        it 'should not be possible to delete the version that is in use' do
-          result = bosh_safe("delete release #{@requirements.release.name} #{@requirements.release.version}")
-          result.should_not succeed
-          result.output.should match /Error 30008/
-        end
-      end
-
-      context 'not in use' do
-        before { bosh("upload release #{@requirements.previous_release.to_path}") }
-
-        it 'should be possible to delete a single release' do
-          result = bosh_safe("delete release #{@requirements.previous_release.name} #{@requirements.previous_release.version}")
-          result.should succeed_with(/Deleted `#{@requirements.previous_release.name}/)
-          @bosh_api.releases.should_not include(@requirements.previous_release)
-        end
-      end
     end
   end
 end
