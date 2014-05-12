@@ -36,6 +36,8 @@ var _ = Describe("defaultNetworkResolver", func() {
 				ifaceName = "en0"
 			} else if _, err := gonet.InterfaceByName("eth0"); err == nil {
 				ifaceName = "eth0"
+			} else if _, err := gonet.InterfaceByName("venet0"); err == nil {
+				ifaceName = "venet0"
 			} else {
 				panic("Not sure which interface name to use: en0 and eth0 are not found")
 			}
