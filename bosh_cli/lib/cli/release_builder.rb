@@ -18,6 +18,7 @@ module Bosh::Cli
       @packages = packages
       @jobs = jobs
       @version = options.fetch(:version, nil)
+      @ignore_existing_fingerprint = options.fetch(:ignore_existing_fingerprint, false)
 
       raise ReleaseVersionError.new('Version numbers cannot be specified for dev releases') if (@version && !@final)
 
@@ -142,7 +143,7 @@ module Bosh::Cli
 
       fingerprint = make_fingerprint(manifest)
 
-      if @index[fingerprint]
+      if @index[fingerprint] && !@ignore_existing_fingerprint
         old_version = @index[fingerprint]["version"]
         say("This version is no different from version #{old_version}")
         @version = old_version

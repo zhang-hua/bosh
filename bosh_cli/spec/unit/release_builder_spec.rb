@@ -1,15 +1,32 @@
 require 'spec_helper'
 
 describe Bosh::Cli::ReleaseBuilder do
-
   before(:each) do
     @release_dir = Dir.mktmpdir
     FileUtils.mkdir_p(File.join(@release_dir, 'config'))
     @release = Bosh::Cli::Release.new(@release_dir)
   end
 
+  after(:each) do
+    FileUtils.rm_rf(@release_dir)
+  end
+
   def new_builder(options = {})
     Bosh::Cli::ReleaseBuilder.new(@release, [], [], options)
+  end
+
+  it 'updates the dev version index when creating a dev release' do
+    expect { new_builder.build }.to(
+      change { Bosh::Cli::VersionsIndex.new(File.join(@release_dir, 'dev_releases')).versions }.
+      from([]).to(['0+dev.1'])
+    )
+  end
+
+  it 'updates the final version index when creating a final release' do
+    expect { new_builder(final: true, version: '1').build }.to(
+      change { Bosh::Cli::VersionsIndex.new(File.join(@release_dir, 'releases')).versions }.
+      from([]).to(['1'])
+    )
   end
 
   context 'when there is a final release' do
@@ -108,9 +125,10 @@ describe Bosh::Cli::ReleaseBuilder do
   end
 
   it "doesn't build a new release if nothing has changed" do
-    builder = new_builder
-    builder.build
-    builder.build
+    new_builder.build
+    expect { new_builder.build }.not_to(
+      change { Bosh::Cli::VersionsIndex.new(File.join(@release_dir, 'dev_releases')).versions }
+    )
 
     File.file?(File.join(@release_dir, 'dev_releases',
       'bosh_release-0+dev.1.tgz')).
@@ -207,6 +225,31 @@ describe Bosh::Cli::ReleaseBuilder do
         expect{ new_builder({ version: '3.123.1-dev' }) }.to raise_error(
           Bosh::Cli::ReleaseVersionError,
           'Version numbers cannot be specified for dev releases'
+        )
+      end
+    end
+  end
+
+  context 'when ignore existing fingerprint option is present' do
+    it 'creates a new version with an identical fingerprint to an existing version' do
+      new_builder.build
+
+      expect { new_builder(ignore_existing_fingerprint: true).build }.to(
+        change { Bosh::Cli::VersionsIndex.new(File.join(@release_dir, 'dev_releases')).versions }.
+        from(%w(0+dev.1)).to(%w(0+dev.1 0+dev.2))
+      )
+    end
+
+    context 'when given release version already exists' do
+      it 'raises error' do
+        final_index = Bosh::Cli::VersionsIndex.new(File.join(@release_dir, 'releases'))
+        final_index.add_version('deadbeef',
+                                { 'version' => '7.3' },
+                                get_tmp_file_path('payload'))
+        FileUtils.touch(File.join(@release_dir, 'releases', 'bosh_release-7.3.tgz'))
+
+        expect { new_builder(final: true, version: '7.3', ignore_existing_fingerprint: true) }.to(
+          raise_error(Bosh::Cli::ReleaseVersionError, 'Release version already exists')
         )
       end
     end
