@@ -102,6 +102,7 @@ module Bosh::Director
             else
               @logger.info('Uploading to global package cache')
               BlobUtil.save_to_global_cache(compiled_package, task.cache_key)
+              @logger.debug('Finished uploading to global package cache')
             end
           else
             @logger.info('Global blobstore not configured, skipping upload')
@@ -111,6 +112,7 @@ module Bosh::Director
         end
 
         task.use_compiled_package(compiled_package)
+        @logger.debug("Ready to use compiled package #{compiled_package.name}")
       end
     end
 
@@ -251,12 +253,15 @@ module Bosh::Director
               task = @tasks_mutex.synchronize { @ready_tasks.pop }
               break if task.nil?
 
+              @logger.debug("Got compilation task from queue: #{task.package.name}")
+
               pool.process { process_task(task) }
             end
 
             break if !pool.working? && (director_job_cancelled? || @ready_tasks.empty?)
             sleep(0.1)
           end
+          @logger.debug('Finished compiling all packages')
         end
       ensure
         # Delete all of the VMs if we were reusing compilation VMs. This can't
