@@ -69,7 +69,12 @@ end
 
 Resque.after_fork do
   EM.error_handler { |e| puts "Error raised during event loop: #{e.message}" }
-  Thread.new { EM.run }
+  unless EM.reactor_running?
+    Thread.new do
+      EM.epoll; EM.kqueue
+      EM.run
+    end
+  end
 end
 
 Resque::Failure.backend = Resque::Failure::Backtrace
