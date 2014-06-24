@@ -158,6 +158,7 @@ module Bosh::Director
         db_config.delete_if { |_, v| v.to_s.empty? }
         db_config = db_config.merge(connection_options)
 
+        db_config[:connection_handling] = :queue
         db = Sequel.connect(db_config)
         if logger
           db.logger = logger

@@ -27,7 +27,9 @@ module Bosh::Director
       # @return [Boolean] Has task been cancelled?
       def task_cancelled?
         return false if task_id.nil?
+        @logger.debug "#{Thread.current.object_id} getting task from database"
         task = task_manager.find_task(task_id)
+        @logger.debug "#{Thread.current.object_id} got task from database #{task} with state #{task.state}"
         task && (task.state == 'cancelling' || task.state == 'timeout')
       end
 

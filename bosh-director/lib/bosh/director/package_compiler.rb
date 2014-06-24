@@ -78,12 +78,18 @@ module Bosh::Director
           task_result = nil
 
           prepare_vm(stemcell) do |vm_data|
+            @logger.info("#{Thread.current.object_id} vm is prepared")
             vm_metadata_updater.update(vm_data.vm, :compiling => package.name)
+            @logger.info("#{Thread.current.object_id} metadata is updated")
+
             agent_task =
               vm_data.agent.compile_package(package.blobstore_id,
                                             package.sha1, package.name,
                                             "#{package.version}.#{build}",
                                             task.dependency_spec)
+
+            @logger.info("#{Thread.current.object_id} Compiling package result #{agent_task['result']}")
+
             task_result = agent_task['result']
           end
 
@@ -95,6 +101,8 @@ module Bosh::Director
             p.blobstore_id = task_result['blobstore_id']
             p.dependency_key = task.dependency_key
           end
+
+          @logger.info("#{Thread.current.object_id} created compiled package")
 
           if Config.use_compiled_package_cache?
             if BlobUtil.exists_in_global_cache?(package, task.cache_key)
@@ -109,6 +117,7 @@ module Bosh::Director
           end
 
           @counter_mutex.synchronize { @compilations_performed += 1 }
+          @logger.info("#{Thread.current.object_id} done compiling package")
         end
 
         task.use_compiled_package(compiled_package)
@@ -255,7 +264,10 @@ module Bosh::Director
 
               @logger.debug("Got compilation task from queue: #{task.package.name}")
 
+              @logger.debug("Starting task #{task.package.name}")
               pool.process { process_task(task) }
+              @logger.debug("Processed task #{task.package.name}")
+
             end
 
             break if !pool.working? && (director_job_cancelled? || @ready_tasks.empty?)
@@ -297,14 +309,19 @@ module Bosh::Director
       task_desc = "package `#{package_desc}' for stemcell `#{stemcell_desc}'"
 
       with_thread_name("compile_package(#{package_desc}, #{stemcell_desc})") do
+        @logger.debug("#{Thread.current.object_id} in thread to compile package")
+
         if director_job_cancelled?
-          @logger.info("Cancelled compiling #{task_desc}")
+          @logger.info("#{Thread.current.object_id} Cancelled compiling #{task_desc}")
         else
+          @logger.info("#{Thread.current.object_id} Started compiling #{task_desc}")
           @event_log.track(package_desc) do
-            @logger.info("Compiling #{task_desc}")
+            @logger.info("#{Thread.current.object_id} Compiling #{task_desc}")
             compile_package(task)
-            @logger.info("Finished compiling #{task_desc}")
+            @logger.info("#{Thread.current.object_id} Finished compiling #{task_desc}")
+
             enqueue_unblocked_tasks(task)
+            @logger.info("#{Thread.current.object_id} enqueued unblocked tasks for #{task}")
           end
         end
       end
