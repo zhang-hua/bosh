@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'timecop'
 
 module Bosh::Director
   describe PackageCompiler do
@@ -153,96 +154,126 @@ module Bosh::Director
     end
 
     context 'when none of the packages are compiled' do
-      it 'compiles all packages' do
+      let(:compiler) { PackageCompiler.new(@plan) }
+      let(:vm_metadata_updater) { instance_double('Bosh::Director::VmMetadataUpdater', update: nil) }
+      before { allow(Bosh::Director::VmMetadataUpdater).to receive(:build).and_return(vm_metadata_updater) }
+
+      let(:vm_cids) { (0..10).map { |i| "vm-cid-#{i}" } }
+      let(:agents) { (0..10).map { instance_double('Bosh::Director::AgentClient') } }
+      before { allow(AgentClient).to receive(:with_defaults).and_return(*agents) }
+
+      let(:net) {  {'default' => 'network settings'} }
+
+      before do
+        agents.each do |agent|
+          initial_state = {
+            'deployment' => 'mycloud',
+            'resource_pool' => 'package_compiler',
+            'networks' => net
+          }
+
+          allow(agent).to receive(:wait_until_ready)
+          allow(agent).to receive(:apply).with(initial_state)
+          allow(agent).to receive(:compile_package)
+        end
+      end
+
+      before do
         prepare_samples
 
-        @plan.stub(:jobs).and_return([@j_dea, @j_router])
-        compiler = PackageCompiler.new(@plan)
+        allow(@plan).to receive(:jobs).and_return([@j_dea, @j_router])
 
-        @network.should_receive(:reserve).at_least(@n_workers).times do |reservation|
+        allow(@network).to receive(:reserve) do |reservation|
           reservation.should be_an_instance_of(NetworkReservation)
           reservation.reserved = true
         end
 
-        @network.should_receive(:network_settings).
-            exactly(11).times.and_return('network settings')
+        allow(@network).to receive(:network_settings).and_return('network settings')
 
-        net = {'default' => 'network settings'}
-        vm_cids = (0..10).map { |i| "vm-cid-#{i}" }
-        agents = (0..10).map { instance_double('Bosh::Director::AgentClient') }
-
-        @cloud.should_receive(:create_vm).exactly(6).times.
+        allow(@cloud).to receive(:create_vm).
             with(instance_of(String), @stemcell_a.model.cid, {}, net, nil, {}).
             and_return(*vm_cids[0..5])
 
-        @cloud.should_receive(:create_vm).exactly(5).times.
+        allow(@cloud).to receive(:create_vm).
             with(instance_of(String), @stemcell_b.model.cid, {}, net, nil, {}).
             and_return(*vm_cids[6..10])
 
-        AgentClient.should_receive(:with_defaults).exactly(11).times.and_return(*agents)
+        @package_set_a.each do |package|
+          allow(compiler).to receive(:with_compile_lock).with(package.id, @stemcell_a.model.id).and_yield
+        end
 
-        vm_metadata_updater = instance_double('Bosh::Director::VmMetadataUpdater', update: nil)
-        Bosh::Director::VmMetadataUpdater.stub(build: vm_metadata_updater)
-        vm_metadata_updater.should_receive(:update).with(anything, { compiling: 'common'})
-        vm_metadata_updater.should_receive(:update).with(anything, hash_including(:compiling)).exactly(10).times
+        @package_set_b.each do |package|
+          allow(compiler).to receive(:with_compile_lock).with(package.id, @stemcell_b.model.id).and_yield
+        end
+
+        allow(@j_dea).to receive(:use_compiled_package)
+        allow(@j_router).to receive(:use_compiled_package)
+
+        allow(@cloud).to receive(:delete_vm)
+
+        allow(@director_job).to receive(:task_checkpoint)
+      end
+
+      it 'compiles all packages' do
+        expect(@network).to receive(:reserve).at_least(@n_workers).times
+        expect(@network).to receive(:network_settings).exactly(11).times
+        expect(@network).to receive(:release).at_least(@n_workers).times
+
+        expect(vm_metadata_updater).to receive(:update).with(anything, { compiling: 'common'})
+        expect(vm_metadata_updater).to receive(:update).with(anything, hash_including(:compiling)).exactly(10).times
+        expect(@director_job).to receive(:task_checkpoint).once
+
+        expect(@j_dea).to receive(:use_compiled_package).exactly(6).times
+        expect(@j_router).to receive(:use_compiled_package).exactly(5).times
+
+        vm_cids.each do |vm_cid|
+          expect(@cloud).to receive(:delete_vm).with(vm_cid)
+        end
 
         agents.each do |agent|
-          initial_state = {
-              'deployment' => 'mycloud',
-              'resource_pool' => 'package_compiler',
-              'networks' => net
-          }
-
-          agent.should_receive(:wait_until_ready)
-          agent.should_receive(:apply).with(initial_state)
-          agent.should_receive(:compile_package) do |*args|
+          expect(agent).to receive(:compile_package) do |*args|
             name = args[2]
             dot = args[3].rindex('.')
             version, build = args[3][0..dot-1], args[3][dot+1..-1]
 
             package = Models::Package.find(name: name, version: version)
-            args[0].should == package.blobstore_id
-            args[1].should == package.sha1
+            expect(args[0]).to eq(package.blobstore_id)
+            expect(args[1]).to eq(package.sha1)
 
             args[4].should be_a(Hash)
 
             {
-                'result' => {
-                    'sha1' => "compiled #{package.id}",
-                    'blobstore_id' => "blob #{package.id}"
-                }
+              'result' => {
+                'sha1' => "compiled #{package.id}",
+                'blobstore_id' => "blob #{package.id}"
+              }
             }
           end
         end
 
+        compiler.compile
+        expect(compiler.compilations_performed).to eq(11)
+
         @package_set_a.each do |package|
-          compiler.should_receive(:with_compile_lock).with(package.id, @stemcell_a.model.id).and_yield
+          package.compiled_packages.size.should >= 1
         end
 
         @package_set_b.each do |package|
-          compiler.should_receive(:with_compile_lock).with(package.id, @stemcell_b.model.id).and_yield
+          package.compiled_packages.size.should >= 1
         end
+      end
 
-        @j_dea.should_receive(:use_compiled_package).exactly(6).times
-        @j_router.should_receive(:use_compiled_package).exactly(5).times
+      it 'asks director for task state no more than once per second' do
+        expect(@director_job).to receive(:task_cancelled?).twice
 
-        vm_cids.each do |vm_cid|
-          @cloud.should_receive(:delete_vm).with(vm_cid)
+        now = Time.now
+        Timecop.freeze(now)
+
+        allow(compiler).to receive(:process_task) do
+          Timecop.freeze(now + 61)
         end
-
-        @network.should_receive(:release).at_least(@n_workers).times
-        @director_job.should_receive(:task_checkpoint).once
 
         compiler.compile
-        compiler.compilations_performed.should == 11
-
-        @package_set_a.each do |package|
-          package.compiled_packages.size.should >= 1
-        end
-
-        @package_set_b.each do |package|
-          package.compiled_packages.size.should >= 1
-        end
       end
     end
 

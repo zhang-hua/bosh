@@ -311,7 +311,13 @@ module Bosh::Director
     end
 
     def director_job_cancelled?
-      @director_job && @director_job.task_cancelled?
+      return false unless @director_job
+      if @director_task_latch == nil || Time.now.to_i - @director_task_latch > 60
+        @last_checked_state = @director_job.task_cancelled?
+        @director_task_latch = Time.now.to_i
+      end
+
+      @last_checked_state
     end
 
     def director_job_checkpoint
