@@ -1,7 +1,7 @@
 require 'digest/sha1'
 require 'fileutils'
 require 'securerandom'
-require 'logger'
+require 'mono_logger'
 
 module Bosh
   module Clouds
