@@ -3,7 +3,7 @@ script: 'bundle exec rake --trace $TASKS'
 # Required by the go agent
 before_install: 'sudo apt-get update'
 
-before_script: 'psql >/dev/null 2>&1'
+before_script: 'psql'
 
 install:
   - 'sudo apt-get install dnsutils'
