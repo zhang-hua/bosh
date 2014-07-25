@@ -12,7 +12,6 @@
 .yardoc
 
 /*/vendor/
-go_agent/src/bosh/scratch
 Checkfile
 TAGS
 
