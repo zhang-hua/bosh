@@ -25,6 +25,10 @@ bosh_cli_plugin_aws/director.key
 bosh_cli_plugin_aws/director.pem
 bosh_cli_plugin_aws/spec/assets/private.yml
 
+/go/gobin
+/go/src/code.google.com/p/go.tools
+/go/src/github.com/golang/lint
+
 create-rds-output*.yml
 create-vpc-output*.yml
 

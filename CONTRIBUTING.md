@@ -19,6 +19,10 @@ Follow these steps to make a contribution to any of our open source repositories
 
 1. Fork the repository
 1. Update submodules (`git submodule update --init`)
+1. Install agent dependencies
+    * Use the built-in `GOPATH` in the `go` directory to install the dependencies listed in the
+      [agent README](go/src/github.com/cloudfoundry/bosh-agent/README.md).
+    * `go/src/github.com/cloudfoundry/bosh-agent/bin/go get ...`
 1. Create a feature branch (`git checkout -b better_bosh`)
     * Run the tests to ensure that your local environment is
   	  working `bundle && bundle exec rake` (this may take a while)
