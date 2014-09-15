@@ -23,7 +23,7 @@ module Bosh::Dev::Openstack
           'type' => net_type,
           'vip' => env['BOSH_OPENSTACK_VIP_DIRECTOR_IP'],
           'cloud_properties' => {
-            'net_id' => env['BOSH_OPENSTACK_NET_ID']
+            'net_id' => env['BOSH_OPENSTACK_MICRO_NET_ID']
           }
         },
         'resources' => {
