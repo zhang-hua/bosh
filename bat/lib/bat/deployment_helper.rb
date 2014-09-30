@@ -153,7 +153,7 @@ module Bat
     end
 
     def use_flavor_with_no_ephemeral_disk
-      @spec['properties']['instance_type'] = 'no-ephemeral'
+      @spec['properties']['instance_type'] = 'n1.small'
     end
 
     def dynamic_network?
