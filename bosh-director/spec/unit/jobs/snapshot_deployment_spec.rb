@@ -17,6 +17,11 @@ module Bosh::Director
       deployment_manager.stub(find_by_name: deployment)
     end
 
+    before do
+      class_double('EM').as_stubbed_const
+      allow(EM).to receive(:next_tick).and_yield
+    end
+
     describe 'Resque job class expectations' do
       let(:job_type) { :snapshot_deployment }
       it_behaves_like 'a Resque job'

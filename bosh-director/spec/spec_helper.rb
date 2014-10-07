@@ -15,6 +15,7 @@ require 'rspec'
 require 'rspec/its'
 require 'machinist/sequel'
 require 'sham'
+require 'timecop'
 
 Dir[File.expand_path('../support/**/*.rb', __FILE__)].each { |f| require(f) }
 

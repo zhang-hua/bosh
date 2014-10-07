@@ -53,7 +53,9 @@ module Bosh::Director
             }
         )
 
-        nats.publish('hm.director.alert', payload)
+        EM.next_tick do
+          nats.publish('hm.director.alert', payload)
+        end
       end
     end
   end
