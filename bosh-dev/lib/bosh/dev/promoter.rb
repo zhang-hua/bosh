@@ -57,14 +57,16 @@ module Bosh::Dev
       if tagger.stable_tag_for?(@candidate_sha)
         @logger.info('Skipping promotion since an existing stable tag was found')
       else
-        release_promoter = ReleaseChangePromoter.new(@candidate_build_number, @candidate_sha, DownloadAdapter.new(@logger))
-        release_promoter.promote
+        unless ENV['BOSH_SKIP_GIT_PROMOTE'] == 'true'
+          release_promoter = ReleaseChangePromoter.new(@candidate_build_number, @candidate_sha, DownloadAdapter.new(@logger))
+          release_promoter.promote
 
-        @logger.info("Pushing release to #{@candidate_sha}")
-        stdout, stderr, status = Open3.capture3('git', 'push', 'origin', @candidate_sha)
-        raise "Failed to push #{sha}: stdout: '#{stdout}', stderr: '#{stderr}'" unless status.success?
+          @logger.info("Pushing release to #{@candidate_sha}")
+          stdout, stderr, status = Open3.capture3('git', 'push', 'origin', @candidate_sha)
+          raise "Failed to push #{sha}: stdout: '#{stdout}', stderr: '#{stderr}'" unless status.success?
 
-        tagger.tag_and_push(@candidate_sha, @candidate_build_number)
+          tagger.tag_and_push(@candidate_sha, @candidate_build_number)
+        end
 
         build = Build.candidate
         build.promote_artifacts
