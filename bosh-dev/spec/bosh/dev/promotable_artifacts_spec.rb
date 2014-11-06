@@ -4,8 +4,8 @@ require 'bosh/dev/build'
 
 module Bosh::Dev
   describe PromotableArtifacts do
-    subject(:build_artifacts) { PromotableArtifacts.new(build, logger) }
-    let(:build) { instance_double('Bosh::Dev::Build', number: 123) }
+    subject(:build_artifacts) { PromotableArtifacts.new(build_number, logger) }
+    let(:build_number) { 123 }
 
     its(:release_file) { should eq('bosh-123.tgz') }
 
@@ -27,13 +27,13 @@ module Bosh::Dev
         ]
       end
       before do
-        allow(Bosh::Dev::GemArtifact).to receive(:new).with(gem_components.components[0], 's3://bosh-ci-pipeline/123/', build.number, logger).and_return(gem_artifacts[0])
-        allow(Bosh::Dev::GemArtifact).to receive(:new).with(gem_components.components[1], 's3://bosh-ci-pipeline/123/', build.number, logger).and_return(gem_artifacts[1])
+        allow(Bosh::Dev::GemArtifact).to receive(:new).with(gem_components.components[0], 's3://bosh-ci-pipeline/123/', build_number, logger).and_return(gem_artifacts[0])
+        allow(Bosh::Dev::GemArtifact).to receive(:new).with(gem_components.components[1], 's3://bosh-ci-pipeline/123/', build_number, logger).and_return(gem_artifacts[1])
       end
 
       let(:release_artifact) { instance_double('Bosh::Dev::ReleaseArtifact', promote: nil) }
       before do
-        allow(Bosh::Dev::ReleaseArtifact).to receive(:new).with(build.number, logger).and_return(release_artifact)
+        allow(Bosh::Dev::ReleaseArtifact).to receive(:new).with(build_number, logger).and_return(release_artifact)
       end
 
       let(:stemcell_artifacts) { instance_double('Bosh::Dev::StemcellArtifacts', list: stemcell_artifact_list) }
@@ -44,7 +44,7 @@ module Bosh::Dev
         ]
       end
       before do
-        allow(Bosh::Dev::StemcellArtifacts).to receive(:all).with(build.number, logger).and_return(stemcell_artifacts)
+        allow(Bosh::Dev::StemcellArtifacts).to receive(:all).with(build_number, logger).and_return(stemcell_artifacts)
       end
 
       it 'includes promotable release artifacts' do

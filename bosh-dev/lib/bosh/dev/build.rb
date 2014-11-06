@@ -35,11 +35,11 @@ module Bosh::Dev
       end
     end
 
-    def initialize(number, download_adapter, logger)
+    def initialize(number, download_adapter, logger, bucket='bosh-ci-pipeline')
       @number = number
       @logger = logger
-      @promotable_artifacts = PromotableArtifacts.new(self, logger)
-      @bucket = 'bosh-ci-pipeline'
+      @promotable_artifacts = PromotableArtifacts.new(number, logger)
+      @bucket = bucket
       @upload_adapter = UploadAdapter.new
       @download_adapter = download_adapter
     end
@@ -56,23 +56,27 @@ module Bosh::Dev
       end
     end
 
-    def upload_release(release)
+    def upload_release(release, final=false)
       upload_adapter.upload(
         bucket_name: bucket,
-        key: File.join(number.to_s, release_path),
+        key: final ? release_path : File.join(number.to_s, release_path),
         body: File.open(release.final_tarball_path),
         public: true,
       )
     end
 
-    def upload_stemcell(stemcell)
+    def upload_stemcell(stemcell, final=false)
       normal_filename = File.basename(stemcell.path)
       latest_filename = normal_filename.gsub(/#{@number}/, 'latest')
 
-      s3_path = File.join(number.to_s, 'bosh-stemcell', stemcell.infrastructure, normal_filename)
-      s3_latest_path = File.join(number.to_s, 'bosh-stemcell', stemcell.infrastructure, latest_filename)
+      s3_path = File.join('bosh-stemcell', stemcell.infrastructure, normal_filename)
+      s3_latest_path = File.join('bosh-stemcell', stemcell.infrastructure, latest_filename)
 
-      bucket = 'bosh-ci-pipeline'
+      unless final
+        s3_path = File.join(number.to_s, s3_path)
+        s3_latest_path = File.join(number.to_s, s3_latest_path)
+      end
+
       upload_adapter = Bosh::Dev::UploadAdapter.new
 
       upload_adapter.upload(bucket_name: bucket, key: s3_latest_path, body: File.open(stemcell.path), public: true)

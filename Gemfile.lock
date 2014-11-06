@@ -284,6 +284,9 @@ GEM
     escape_utils (1.0.1)
     eventmachine (1.0.3)
     excon (0.39.5)
+    fakes3 (0.1.6.0)
+      builder
+      thor
     ffi (1.9.3)
     fog (1.23.0)
       fog-brightbox
@@ -494,6 +497,7 @@ DEPENDENCIES
   bosh_warden_cpi!
   codeclimate-test-reporter
   fakefs!
+  fakes3
   foodcritic
   httpclient
   jenkins_api_client

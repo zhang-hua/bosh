@@ -6,10 +6,10 @@ require 'bosh/dev/gem_artifact'
 
 module Bosh::Dev
   class PromotableArtifacts
-    def initialize(build, logger)
-      @build = build
+    def initialize(build_number, logger)
+      @build_number = build_number
       @logger = logger
-      @release = ReleaseArtifact.new(build.number, @logger)
+      @release = ReleaseArtifact.new(build_number, @logger)
     end
 
     def all
@@ -22,12 +22,10 @@ module Bosh::Dev
 
     private
 
-    attr_reader :build
-
     def gem_artifacts
-      gem_components = GemComponents.new(build.number)
-      source = Bosh::Dev::UriProvider.pipeline_s3_path("#{build.number}", '')
-      gem_components.components.map { |component| GemArtifact.new(component, source, build.number, @logger) }
+      gem_components = GemComponents.new(@build_number)
+      source = Bosh::Dev::UriProvider.pipeline_s3_path("#{@build_number}", '')
+      gem_components.components.map { |component| GemArtifact.new(component, source, @build_number, @logger) }
     end
 
     def release_artifacts
@@ -35,7 +33,7 @@ module Bosh::Dev
     end
 
     def stemcell_artifacts
-      StemcellArtifacts.all(build.number, @logger).list
+      StemcellArtifacts.all(@build_number, @logger).list
     end
   end
 end

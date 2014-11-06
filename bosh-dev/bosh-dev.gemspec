@@ -32,4 +32,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rspec-its'
   spec.add_development_dependency 'fakefs'
   spec.add_development_dependency 'rugged'
+  spec.add_development_dependency 'fakes3'
 end
