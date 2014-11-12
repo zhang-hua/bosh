@@ -509,7 +509,7 @@ module VSphereCloud
       end
     end
 
-    def detach_disk(vm_cid, disk_cid)
+    def detach_disk(vm_cid, disk_cid, should_sleep=false)
       with_thread_name("detach_disk(#{vm_cid}, #{disk_cid})") do
         @logger.info("Detaching disk: #{disk_cid} from vm: #{vm_cid}")
         disk = Models::Disk.first(uuid: disk_cid)
@@ -529,6 +529,11 @@ module VSphereCloud
 
         devices = @cloud_searcher.get_property(vm, Vim::VirtualMachine, 'config.hardware.device', ensure_all: true)
         vmdk_path = "#{disk.path}.vmdk"
+        @logger.debug("The expected vmdk is: #{vmdk_path}")
+        devices.each do |device|
+          @logger.debug("The recieved vmdk is: #{device.backing.filename}") if device.kind_of?(Vim::Vm::Device::VirtualDisk)
+        end
+        sleep(60) if should_sleep
         virtual_disk =
           devices.find do |device|
             device.kind_of?(Vim::Vm::Device::VirtualDisk) && device.backing.file_name == vmdk_path

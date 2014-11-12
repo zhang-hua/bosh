@@ -239,7 +239,7 @@ describe VSphereCloud::Cloud, external_cpi: false do
       it 'does not lock cd-rom' do
         vm_lifecycle([], resource_pool)
         @cpi.attach_disk(@vm_id, @disk_id)
-        @cpi.detach_disk(@vm_id, @disk_id)
+        @cpi.detach_disk(@vm_id, @disk_id, true)
       end
     end
 
