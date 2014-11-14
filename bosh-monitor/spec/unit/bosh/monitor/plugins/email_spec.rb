@@ -111,6 +111,11 @@ describe Bhm::Plugins::Email do
       @plugin.run
     end
 
+    if @plugin.queue_size(:alert) > 0
+      p 'About to fall asleep'
+      sleep(300)
+    end
+
     expect(@plugin.queue_size(:alert)).to eq(0)
     expect(@plugin.queue_size(:heartbeat)).to eq(0)
   end
