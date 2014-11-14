@@ -45,8 +45,6 @@ describe Bhm::Plugins::Email do
 
     expect(Bhm::Plugins::Email.new(valid_options).validate_options).to eq(true)
     expect(Bhm::Plugins::Email.new(invalid_options).validate_options).to eq(false)
-
-    expect(EM.reactor_running?).to eq(false)
   end
 
   it 'does not start if event loop is not running' do
@@ -100,12 +98,17 @@ describe Bhm::Plugins::Email do
 
     expect(@plugin.queue_size(:alert)).to eq(20)
     expect(@plugin.queue_size(:heartbeat)).to eq(20)
+    expect(EM.reactor_running?).to eq(false)
 
     EM.run do
       @plugin.run
-      EM.add_timer(300) { EM.stop }
-      EM.add_periodic_timer(1) do
-        logger.info("watching")
+      EM.add_timer(30) do
+         #By this time the test is failing
+        puts("Timeout canceling the event machine")
+        EM.stop
+      end
+      EM.add_periodic_timer(0.5) do
+        puts("watching")
         if @plugin.queue_size(:alert) == 0 && @plugin.queue_size(:heartbeat) == 0
           EM.stop
         end
@@ -115,5 +118,4 @@ describe Bhm::Plugins::Email do
     expect(@plugin.queue_size(:alert)).to eq(0)
     expect(@plugin.queue_size(:heartbeat)).to eq(0)
   end
-
 end
