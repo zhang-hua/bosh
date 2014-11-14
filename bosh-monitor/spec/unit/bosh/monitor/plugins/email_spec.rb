@@ -18,7 +18,7 @@ describe Bhm::Plugins::Email do
     @options = {
       'recipients' => [ 'dude@vmware.com', 'dude2@vmware.com'],
       'smtp' => @smtp_options,
-      'interval' => 0.1
+      'interval' => 0.5
     }
 
     @plugin = Bhm::Plugins::Email.new(@options)
@@ -45,6 +45,8 @@ describe Bhm::Plugins::Email do
 
     expect(Bhm::Plugins::Email.new(valid_options).validate_options).to eq(true)
     expect(Bhm::Plugins::Email.new(invalid_options).validate_options).to eq(false)
+
+    expect(EM.reactor_running?).to eq(false)
   end
 
   it 'does not start if event loop is not running' do
@@ -101,7 +103,7 @@ describe Bhm::Plugins::Email do
 
     EM.run do
       EM.add_timer(300) { EM.stop }
-      EM.add_periodic_timer(0.5) do
+      EM.add_periodic_timer(1) do
         if @plugin.queue_size(:alert) == 0 && @plugin.queue_size(:heartbeat) == 0
           EM.stop
         end
