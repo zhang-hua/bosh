@@ -102,18 +102,14 @@ describe Bhm::Plugins::Email do
     expect(@plugin.queue_size(:heartbeat)).to eq(20)
 
     EM.run do
+      @plugin.run
       EM.add_timer(300) { EM.stop }
       EM.add_periodic_timer(1) do
+        logger.info("watching")
         if @plugin.queue_size(:alert) == 0 && @plugin.queue_size(:heartbeat) == 0
           EM.stop
         end
       end
-      @plugin.run
-    end
-
-    if @plugin.queue_size(:alert) > 0
-      p 'About to fall asleep'
-      sleep(300)
     end
 
     expect(@plugin.queue_size(:alert)).to eq(0)
