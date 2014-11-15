@@ -11,6 +11,8 @@ end
 describe Bhm::Plugins::Email do
 
   before do
+    expect(EM.reactor_running?).to eq(false)
+
     Bhm.logger = logger
 
     @smtp_options = {
@@ -106,7 +108,6 @@ describe Bhm::Plugins::Email do
 
     expect(@plugin.queue_size(:alert)).to eq(20)
     expect(@plugin.queue_size(:heartbeat)).to eq(20)
-    expect(EM.reactor_running?).to eq(false)
 
     EM.run do
       puts("Inside EM.run block")
