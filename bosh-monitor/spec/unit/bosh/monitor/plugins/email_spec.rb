@@ -1,5 +1,13 @@
 require 'spec_helper'
 
+class << EM
+  alias_method :stop_without_caller, :stop
+  def stop(*args)
+    puts "Caller: \n#{caller.join("\n")}"
+    stop_without_caller(*args)
+  end
+end
+
 describe Bhm::Plugins::Email do
 
   before do
