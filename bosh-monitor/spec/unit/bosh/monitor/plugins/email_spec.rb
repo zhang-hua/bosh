@@ -101,6 +101,7 @@ describe Bhm::Plugins::Email do
     expect(EM.reactor_running?).to eq(false)
 
     EM.run do
+      puts("Inside EM.run block")
       @plugin.run
       EM.add_timer(30) do
          #By this time the test is failing
