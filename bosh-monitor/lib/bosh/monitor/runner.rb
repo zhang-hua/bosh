@@ -121,8 +121,6 @@ module Bosh::Monitor
     # We might revisit that later
     def handle_em_error(e)
       @shutting_down = true
-      puts e.inspect
-      puts e.backtrace
       log_exception(e, :fatal)
       stop
     end

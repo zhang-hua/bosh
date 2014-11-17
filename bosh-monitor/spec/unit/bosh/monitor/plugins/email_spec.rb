@@ -1,13 +1,5 @@
 require 'spec_helper'
 
-class << EM
-  alias_method :stop_without_caller, :stop
-  def stop(*args)
-    puts "Caller: \n#{caller.join("\n")}"
-    stop_without_caller(*args)
-  end
-end
-
 describe Bhm::Plugins::Email do
 
   before do
@@ -113,7 +105,7 @@ describe Bhm::Plugins::Email do
       puts("Inside EM.run block")
       @plugin.run
       EM.add_timer(30) do
-         #By this time the test is failing
+        # By this time the test is failing
         puts("Timeout canceling the event machine")
         EM.stop
       end
