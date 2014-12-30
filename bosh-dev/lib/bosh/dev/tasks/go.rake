@@ -4,8 +4,7 @@ namespace :go do
   task :all => [
     'go:install',
     'go:set_path',
-    'go:set_bin',
-    'go:install_tools',
+    'go:set_bin'
   ]
 
   desc 'Download & Install Go'
