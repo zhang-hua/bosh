@@ -37,5 +37,10 @@ module Bosh::Dev::Sandbox
         @runner.run(%Q{psql -U postgres #{db_name} -c 'truncate table "#{table_name}" cascade;' > /dev/null 2>&1})
       end
     end
+
+    def tasks
+      @logger.info("Getting current tasks from #{db_name}")
+      @runner.run(%Q{psql -U postgres #{db_name} -c "select * from tasks;" })
+    end
   end
 end

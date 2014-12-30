@@ -36,5 +36,10 @@ module Bosh::Dev::Sandbox
         @runner.run(%Q{mysql --user=#{@username} --password=#{@password} -e 'SET FOREIGN_KEY_CHECKS=0; truncate table `#{table_name}`; SET FOREIGN_KEY_CHECKS=1;' #{db_name} > /dev/null 2>&1})
       end
     end
+
+    def tasks
+      @logger.info("Getting current tasks from #{db_name}")
+      @runner.run(%Q{mysql --user=#{@username} --password=#{@password} -e "select * from tasks;" #{db_name}})
+    end
   end
 end

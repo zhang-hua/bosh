@@ -29,6 +29,7 @@ module IntegrationExampleGroup
       ClientSandbox.bosh_work_dir,
       ClientSandbox.bosh_config,
       current_sandbox.cpi.method(:agent_log_path),
+      @current_sandbox.database,
       @current_sandbox.nats_log_path,
       @current_sandbox.saved_logs_path,
       logger
@@ -40,6 +41,7 @@ module IntegrationExampleGroup
       work_dir,
       ClientSandbox.bosh_config,
       current_sandbox.cpi.method(:agent_log_path),
+      @current_sandbox.database,
       @current_sandbox.nats_log_path,
       @current_sandbox.saved_logs_path,
       logger

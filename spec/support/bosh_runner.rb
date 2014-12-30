@@ -1,9 +1,10 @@
 module Bosh::Spec
   class BoshRunner
-    def initialize(bosh_work_dir, bosh_config, agent_log_path_resolver, nats_log_path, saved_logs_path, logger)
+    def initialize(bosh_work_dir, bosh_config, agent_log_path_resolver, database, nats_log_path, saved_logs_path, logger)
       @bosh_work_dir = bosh_work_dir
       @bosh_config = bosh_config
       @agent_log_path_resolver = agent_log_path_resolver
+      @database = database
       @nats_log_path = nats_log_path
       @saved_logs_path = saved_logs_path
       @logger = logger
@@ -36,6 +37,8 @@ module Bosh::Spec
         if output =~ /Timed out pinging to ([a-z\-\d]+) after \d+ seconds/
           print_agent_debug_logs($1)
         end
+
+        output_debug_log("Current tasks in #{@database.db_name}", @database.tasks)
 
         raise "ERROR: #{command} failed with output:\n#{output}"
       end

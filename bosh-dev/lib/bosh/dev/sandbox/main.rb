@@ -54,7 +54,7 @@ module Bosh::Dev::Sandbox
 
     attr_accessor :external_cpi_enabled
 
-    attr_reader :nats_log_path
+    attr_reader :nats_log_path, :database
 
     def self.from_env
       db_opts = {
