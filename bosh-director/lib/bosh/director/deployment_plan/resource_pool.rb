@@ -47,7 +47,7 @@ module Bosh::Director
         @size = safe_property(spec, "size", :class => Integer, :optional => true)
 
         @cloud_properties =
-          safe_property(spec, "cloud_properties", :class => Hash)
+          safe_property(spec, "cloud_properties", :class => Hash, :default => {})
 
         stemcell_spec = safe_property(spec, "stemcell", :class => Hash)
         @stemcell = Stemcell.new(self, stemcell_spec)

@@ -1,5 +1,13 @@
 require 'spec_helper'
 
+puts "For stack trace, do this: kill -TTIN #{Process.pid}"
+trap 'TTIN' do
+  Thread.list.each do |thread|
+    puts "Thread TID-#{thread.object_id.to_s(36)}"
+    puts thread.backtrace.join("\n")
+  end
+end
+
 describe Bosh::Director::Jobs::UpdateDeployment do
   let(:app) { instance_double('Bosh::Director::App', blobstores: blobstores) }
   let(:blobstores) { instance_double('Bosh::Director::Blobstores', blobstore: blobstore) }
@@ -9,6 +17,77 @@ describe Bosh::Director::Jobs::UpdateDeployment do
   describe 'Resque job class expectations' do
     let(:job_type) { :update_deployment }
     it_behaves_like 'a Resque job'
+  end
+
+  context 'without mocking the entire freaking world away' do
+    let(:manifest) { <<-YAML }
+      name: fake
+      releases:
+      - { name: mysql, version: 1 }
+      compilation: { workers: 1, network: default }
+      update: { canaries: 1, max_in_flight: 1, canary_watch_time: 100, update_watch_time: 100 }
+      networks:
+      - { name: default, subnets: [{ range: 10.10.0.0/24, gateway: 10.10.0.1, dns: [10.10.0.2] }] }
+      resource_pools:
+      - { name: pool0, stemcell: { name: a-stemcell, version: 123 }, network: default }
+      jobs:
+      - name: cluster
+        templates:
+        - name: mysqld
+          release: mysql
+        resource_pool: pool0
+        instances: 1
+        networks: [{ name: default }]
+        properties:
+          username: root
+    YAML
+
+    let(:manifest_file) { Tempfile.new('manifest').tap {|t| File.write(t.path, manifest)} }
+    after { manifest_file.delete }
+
+    before do
+      Bosh::Director::Config.cloud_options = { 'external_cpi' => { 'cpi_path' => 'fake-cpi', 'enabled' => true } }
+      Bosh::Clouds::Config.configure(double(:delegate, logger: Logging::Logger.new))
+      release = Bosh::Director::Models::Release.create(name: 'mysql')
+      release_version = Bosh::Director::Models::ReleaseVersion.new(version: '1')
+      release.add_version(release_version)
+      release.save
+      template = Bosh::Director::Models::Template.create(
+        name: 'mysqld', version: '1', blobstore_id: '1234', sha1: '4321',
+        package_names_json: '[]', release_id:  release.id
+      )
+      release_version.add_template(template)
+      Bosh::Director::Models::Stemcell.create(name: 'a-stemcell', version: '123', cid: 'abc')
+      Bosh::Director::Models::Dns::Domain.create(name: 'mydomain', type: 'xxx')
+      allow(Bosh::Director::Config).to receive(:dns_enabled?).and_return(false)
+      allow(File).to receive(:executable?).with('fake-cpi').and_return(true)
+      allow(Open3).to receive(:capture3).and_return(['{"result": "", "log": "", "error": null}', 'err', 0])
+      allow_any_instance_of(Bosh::Clouds::ExternalCpi).to receive(:save_cpi_log) { |_, *args| p *args }
+      # allow_any_instance_of(Bosh::Director::AgentClient).to receive(:ping)
+      allow_any_instance_of(Bosh::Director::DeploymentPlan::Notifier).to receive_messages(
+        :send_start_event => nil, :send_end_event => nil, :send_error_event => nil)
+      allow_any_instance_of(Bosh::Director::JobRenderer).to receive(:render_job_instances)
+      allow_any_instance_of(Bosh::Director::DeploymentPlan::BatchMultiJobUpdater).to receive(:run)
+      nats_rpc = double(:nats_rpc)
+      allow(Bosh::Director::Config).to receive(:nats_rpc).and_return(nats_rpc)
+      allow(nats_rpc).to receive(:send_request) do |message_name, *args, &block|
+        p "send_request", message_name, args
+        block.call({"encrypted_data" => "foo"})
+      end
+    end
+    subject(:command) { Bosh::Director::Jobs::UpdateDeployment.new(manifest_file.path) }
+
+    it 'takes a manifest and generates config' do
+      called_with_instances = nil
+      allow_any_instance_of(Bosh::Director::DeploymentPlan::InstanceVmBinder).to receive(:bind_instance_vms) do |_, instances|
+        called_with_instances = instances
+      end
+      command.perform
+      expect(called_with_instances.size).to eq(1)
+      instance = called_with_instances.first
+      expect(instance.job.name).to eq('cluster')
+      expect(instance.job.all_properties).to eq({'username' => 'root'})
+    end
   end
 
   describe 'instance methods' do

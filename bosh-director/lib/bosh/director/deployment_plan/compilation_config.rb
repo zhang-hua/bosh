@@ -45,7 +45,7 @@ module Bosh::Director
                 "network `#{network_name}'"
         end
         @cloud_properties = safe_property(
-            compilation_config, "cloud_properties", :class => Hash)
+            compilation_config, "cloud_properties", :class => Hash, :default => {})
         @env = safe_property(compilation_config, "env", :class => Hash,
                              :optional => true, :default => {})
       end

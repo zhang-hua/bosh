@@ -147,8 +147,6 @@ module Bosh::Director
         @enable_snapshots = config.fetch('snapshots', {}).fetch('enabled', false)
 
         Bosh::Clouds::Config.configure(self)
-
-        @lock = Monitor.new
       end
 
       def log_dir
@@ -184,7 +182,7 @@ module Bosh::Director
       end
 
       def compiled_package_cache_blobstore
-        @lock.synchronize do
+        lock.synchronize do
           if @compiled_package_cache_blobstore.nil? && use_compiled_package_cache?
             provider = @compiled_package_cache_options['provider']
             options = @compiled_package_cache_options['options']
@@ -205,7 +203,7 @@ module Bosh::Director
       end
 
       def cloud
-        @lock.synchronize do
+        lock.synchronize do
           if @cloud.nil?
             @cloud = Bosh::Clouds::Provider.create(@cloud_options, @uuid)
           end
@@ -236,7 +234,7 @@ module Bosh::Director
       end
 
       def cloud_options=(options)
-        @lock.synchronize do
+        lock.synchronize do
           @cloud_options = options
           @cloud = nil
         end
@@ -245,7 +243,7 @@ module Bosh::Director
       def nats_rpc
         # double-check locking to reduce synchronization
         if @nats_rpc.nil?
-          @lock.synchronize do
+          lock.synchronize do
             if @nats_rpc.nil?
               @nats_rpc = NatsRpc.new(@nats_uri)
             end
@@ -341,7 +339,13 @@ module Bosh::Director
 
         new_uuid
       end
+
+      def lock
+        @lock ||= Monitor.new
+      end
     end
+
+    Config.lock # memoize the mutex before there could be lots of threads!
 
     class << self
       def load_file(path)

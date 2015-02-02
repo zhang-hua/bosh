@@ -58,6 +58,7 @@ module Bosh
     end
 
     def create_thread
+      my_caller = caller
       thread = Thread.new do
         begin
           loop do
@@ -76,6 +77,7 @@ module Bosh
             begin
               action.call
             rescue Exception => e
+              e.set_backtrace(e.backtrace + my_caller)
               raise_worker_exception(e)
             end
           end

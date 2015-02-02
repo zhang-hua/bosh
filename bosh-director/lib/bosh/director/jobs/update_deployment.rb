@@ -31,6 +31,13 @@ module Bosh::Director
         }
 
         manifest_as_hash = Psych.load(@manifest)
+        # @deployment_plan = NewNonStupidDeploymentParser.parse(manifest_as_hash).
+        #   validate.
+        #   resolve_services.
+        #   assign_ips.
+        #   compute_properties.
+        #   create_planner
+
         @deployment_plan = DeploymentPlan::Planner.parse(manifest_as_hash, plan_options, event_log, logger)
         logger.info('Created deployment plan')
 

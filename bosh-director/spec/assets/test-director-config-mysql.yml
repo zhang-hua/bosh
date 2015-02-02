@@ -12,13 +12,13 @@ redis:
 
 dir: /tmp/boshdir
 db:
-  adapter: mysql
+  adapter: mysql2
   database: 'db'
   connection_options:
     max_connections: 32
     pool_timeout: 10
-  user: 'dbuser'
-  password: 'dbpass'
+  user: root
+  password: password
 blobstore:
   provider: simple
   options:

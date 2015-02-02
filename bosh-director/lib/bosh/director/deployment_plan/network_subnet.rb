@@ -64,7 +64,7 @@ module Bosh::Director
         @dns = dns_servers(@network.name, subnet_spec)
 
         @cloud_properties = safe_property(subnet_spec, "cloud_properties",
-                                          :class => Hash)
+                                          :class => Hash, :default => {})
 
         @available_dynamic_ips = Set.new
         @available_static_ips = Set.new
