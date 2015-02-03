@@ -85,8 +85,6 @@ require 'cli/deployment_manifest_compiler'
 require 'cli/task_tracking'
 
 require 'cli/release'
-require 'cli/packaging_helper'
-require 'cli/job_builder'
 require 'cli/release_builder'
 require 'cli/release_compiler'
 require 'cli/release_tarball'

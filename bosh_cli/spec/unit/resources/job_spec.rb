@@ -176,6 +176,22 @@ describe Bosh::Cli::Resources::Job, 'dev build' do
       end
     end
 
+    context 'when properties are specified' do
+      let(:properties) { {'foo' => 'bar'} }
+      let(:spec) do
+        {
+          'name' => name,
+          'packages' => spec_packages,
+          'templates' => spec_templates,
+          'properties' => properties
+        }
+      end
+
+      it 'returns properties' do
+        expect(job.properties).to eq(properties)
+      end
+    end
+
     context 'when no monit file is found on the filesystem' do
       before do
         release_source.remove_file(base, 'monit')
@@ -199,9 +215,25 @@ describe Bosh::Cli::Resources::Job, 'dev build' do
     end
     let(:builder) { Bosh::Cli::ArchiveBuilder.new(archive_dir, blobstore, release_options) }
 
-    it 'has a fingerprint' do
-      artifact = builder.build(job)
-      expect(artifact.fingerprint).to eq('3d8c0d4265ec501bed0398c0dc231b3b74a64ad4')
+    it 'includes a spec entry' do
+      expect(job.files).to include([release_source.join(base, 'spec'), 'job.MF'])
+    end
+
+    it 'includes template file entries' do
+      expect(job.files).to include([release_source.join(base, 'templates', 'a.conf'), 'templates/a.conf'])
+      expect(job.files).to include([release_source.join(base, 'templates', 'b.yml'), 'templates/b.yml'])
+    end
+
+    it 'includes monit file entries' do
+      expect(job.files).to include([release_source.join(base, 'monit'), 'monit'])
+    end
+
+    context 'when the Job is invalid' do
+      let(:name) { nil }
+
+      it 'raises' do
+        expect { job.files }.to raise_error(Bosh::Cli::InvalidJob)
+      end
     end
   end
 

@@ -8,7 +8,7 @@ module Bosh::Cli
       @options = options
     end
 
-    def build(resource, dependencies = nil)
+    def build(resource)
       resource.run_script(:prepare)
 
       artifact = BuildArtifact.new(resource)
@@ -79,7 +79,7 @@ module Bosh::Cli
     end
 
     def locate_tarball(resource, artifact)
-      use_final_version(resource, artifact) || use_dev_version(resource, artifact)
+      use_final_version(resource, artifact) || use_dev_version(artifact)
     end
 
     def new_version?
@@ -87,16 +87,13 @@ module Bosh::Cli
     end
 
     def notes
-      notes = []
-
       if @will_be_promoted
-        new_final_version = @version
-        notes << "new final version #{new_final_version}"
+        ["new final version #{@version}"]
       elsif new_version?
-        notes << 'new version'
+        ['new version']
+      else
+        []
       end
-
-      notes
     end
 
     def use_final_version(resource, artifact)
@@ -131,7 +128,7 @@ module Bosh::Cli
       raise BlobstoreError, "Blobstore error: #{e}"
     end
 
-    def use_dev_version(resource, artifact)
+    def use_dev_version(artifact)
       say('Dev version:', '   ')
       item = @dev_index[artifact.fingerprint]
 

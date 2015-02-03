@@ -88,10 +88,10 @@ module Bosh::Cli::Command
         package_artifacts = build_packages(dry_run, final)
 
         header('Building jobs')
-        jobs = build_jobs(package_artifacts.map { |artifact| artifact.name }, dry_run, final)
+        job_artifacts = build_jobs(package_artifacts.map { |artifact| artifact.name }, dry_run, final)
 
         header('Building release')
-        release_builder = build_release(dry_run, final, jobs, manifest_only, package_artifacts.map(&:metadata), name, version)
+        release_builder = build_release(dry_run, final, job_artifacts, manifest_only, package_artifacts, name, version)
 
         header('Release summary')
         show_summary(release_builder)
@@ -163,8 +163,8 @@ module Bosh::Cli::Command
         artifacts
       end
 
-      def build_release(dry_run, final, jobs, manifest_only, packages, name, version)
-        release_builder = Bosh::Cli::ReleaseBuilder.new(release, packages, jobs, name,
+      def build_release(dry_run, final, job_artifacts, manifest_only, package_artifacts, name, version)
+        release_builder = Bosh::Cli::ReleaseBuilder.new(release, package_artifacts, job_artifacts, name,
           final: final,
           commit_hash: commit_hash,
           version: version,
@@ -187,10 +187,11 @@ module Bosh::Cli::Command
           :final => final,
           :dry_run => dry_run,
         }
-        jobs = Bosh::Cli::Resource::Job.discover(work_dir, packages)
+        jobs = Bosh::Cli::Resources::Job.discover(work_dir, packages)
+        archive_builder = Bosh::Cli::ArchiveBuilder.new(work_dir, release.blobstore, options)
         artifacts = jobs.map do |job|
           say("Building #{job.name.make_green}...")
-          artifact = Bosh::Cli::ArchiveBuilder.new(work_dir, release.blobstore, options).build(job)
+          artifact = archive_builder.build(job)
           nl
           artifact
         end
@@ -222,15 +223,15 @@ module Bosh::Cli::Command
       def show_summary(builder)
         packages_table = table do |t|
           t.headings = %w(Name Version Notes)
-          builder.packages.each do |package|
-            t << package_summary(package)
+          builder.packages.each do |package_artifact|
+            t << artifact_summary(package_artifact)
           end
         end
 
         jobs_table = table do |t|
           t.headings = %w(Name Version Notes)
-          builder.jobs.each do |job|
-            t << job_summary(job)
+          builder.jobs.each do |job_artifact|
+            t << artifact_summary(job_artifact)
           end
         end
 
@@ -257,20 +258,12 @@ module Bosh::Cli::Command
         end
       end
 
-      def package_summary(artifact)
-        result = []
-        result << artifact['name']
-        result << artifact['version']
-        result << artifact['notes'].join(', ')
-        result
-      end
-
-      def job_summary(artifact)
-        result = []
-        result << artifact.name
-        result << artifact.version
-        result << artifact.notes.join(', ')
-        result
+      def artifact_summary(artifact)
+        [
+          artifact.metadata['name'],
+          artifact.metadata['version'],
+          artifact.metadata['notes'].join(', '),
+        ]
       end
 
       def commit_hash

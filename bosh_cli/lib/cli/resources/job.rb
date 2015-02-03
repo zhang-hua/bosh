@@ -31,15 +31,13 @@ module Bosh::Cli::Resources
     def files
       validate!
 
-      files = []
-      files += templates.map { |file| [File.join(templates_dir, file), "templates/#{file}"] }
-      files += monit_files.map { |file| [file, File.split(file).last] }
+      files = (templates_files + monit_files).map { |absolute_path| [absolute_path, relative_path(absolute_path)] }
       files << [File.join(job_base, 'spec'), 'job.MF']
       files
     end
 
     def metadata
-      { 'name' => name }
+      { 'name' => name, 'packages' => package_dependencies }
     end
 
     # TODO: check dependency packages
@@ -93,7 +91,9 @@ module Bosh::Cli::Resources
       end
     end
 
-    # ---
+    def properties
+      spec['properties'] || {}
+    end
 
     private
 
@@ -128,8 +128,8 @@ module Bosh::Cli::Resources
       spec['packages'] || []
     end
 
-    def properties
-      spec['properties'] || {}
+    def relative_path(path)
+      Pathname.new(path).relative_path_from(job_base).to_s
     end
 
     def templates
@@ -137,14 +137,20 @@ module Bosh::Cli::Resources
     end
 
     def templates_dir
-      @templates_dir ||= File.join(job_base, 'templates')
+      @templates_dir ||= job_base.join('templates')
+    end
+
+    def templates_files
+      templates.map { |file| File.join(templates_dir, file) }
     end
 
     def run_script_prepare
       script_path = File.join(job_base, 'prepare')
 
+      return nil unless File.exists?(script_path)
+
       unless File.executable?(script_path)
-        raise InvalidJob, "Prepare script at '#{script_path}' is not executable"
+        raise Bosh::Cli::InvalidJob, "Prepare script at '#{script_path}' is not executable"
       end
 
       old_env = ENV
@@ -164,7 +170,7 @@ module Bosh::Cli::Resources
         end
 
         unless $?.exitstatus == 0
-          raise InvalidJob, "'#{script_path}' script failed: #{output}"
+          raise Bosh::Cli::InvalidJob, "'#{script_path}' script failed: #{output}"
         end
 
         output
