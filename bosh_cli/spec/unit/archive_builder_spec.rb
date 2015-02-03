@@ -99,7 +99,7 @@ describe Bosh::Cli::ArchiveBuilder, 'dev build' do
       let(:dry_run) { true }
 
       it 'writes no tarballs' do
-        expect { builder.build(resource) }.not_to change { directory_listing(release_source.path) }
+        expect { builder.build(resource) }.not_to change { directory_listing(archive_dir) }
       end
 
       it 'does not upload the tarball' do
@@ -109,6 +109,10 @@ describe Bosh::Cli::ArchiveBuilder, 'dev build' do
 
       context 'when final' do
         let(:final) { true }
+
+        it 'writes no tarballs' do
+          expect { builder.build(resource) }.not_to change { directory_listing(archive_dir) }
+        end
 
         it 'does not upload the tarball' do
           expect(blobstore).to_not receive(:create)
