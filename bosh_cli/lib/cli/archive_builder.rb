@@ -56,16 +56,16 @@ module Bosh::Cli
       artifact = BuildArtifact.new(resource)
       say('Final version:', ' ')
 
-      item = @archive_repository.lookup_final(artifact)
+      metadata = @archive_repository.lookup_final(artifact)
 
-      if item.nil?
+      if metadata.nil?
         say('NOT FOUND'.make_red)
         return nil
       end
 
-      blobstore_id = item['blobstore_id']
-      version      = item['version'] || artifact.fingerprint
-      sha1         = item['sha1']
+      blobstore_id = metadata['blobstore_id']
+      version      = metadata['version'] || artifact.fingerprint
+      sha1         = metadata['sha1']
 
       if blobstore_id.nil?
         say('No blobstore id'.make_red)
