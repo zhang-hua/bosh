@@ -15,11 +15,7 @@ module Bosh::Cli
         locate_tarball(resource) || generate_tarball(resource)
       end
 
-      artifact.notes = notes
-      artifact.new_version = new_version?
-
       upload_tarball(artifact) if final? && !dry_run?
-      @will_be_promoted = true if final? && dry_run? && @used_dev_version
 
       artifact
     end
@@ -56,20 +52,6 @@ module Bosh::Cli
       locate_in_final(resource) || locate_in_dev_and_maybe_install_to_final(resource)
     end
 
-    def new_version?
-      @tarball_generated || @promoted || @will_be_promoted
-    end
-
-    def notes
-      if @will_be_promoted
-        ["new final version #{@version}"]
-      elsif new_version?
-        ['new version']
-      else
-        []
-      end
-    end
-
     def locate_in_final(resource)
       artifact = BuildArtifact.new(resource)
       say('Final version:', ' ')
@@ -94,8 +76,6 @@ module Bosh::Cli
 
       tarball_path = @archive_repository.find_file(blobstore_id, sha1, version, "package #{desc}")
 
-      @version = version
-      @used_final_version = true
       artifact.tarball_path = tarball_path
       artifact
     rescue Bosh::Blobstore::NotFound
@@ -134,7 +114,6 @@ module Bosh::Cli
         @archive_repository.install_into_final(artifact, metadata, tarball_path)
       end
 
-      @version = version
       @used_dev_version = true
       artifact.tarball_path = tarball_path
       artifact
@@ -163,8 +142,8 @@ module Bosh::Cli
         tarball_path = @archive_repository.put(artifact, tmp_file, final?)
       end
 
-      @version = version
-      @tarball_generated = true
+      artifact.notes = ['new version']
+      artifact.new_version = true
       say("Generated version #{version}".make_green)
 
       artifact.tarball_path = tarball_path
@@ -194,7 +173,9 @@ module Bosh::Cli
       say("Uploaded, blobstore id '#{blobstore_id}'")
       item['blobstore_id'] = blobstore_id
       @archive_repository.update_final_version(artifact, item)
-      @promoted = true
+
+      artifact.notes = ['new version']
+      artifact.new_version = true
       true
     rescue Bosh::Blobstore::BlobstoreError => e
       raise BlobstoreError, "Blobstore error: #{e}"
