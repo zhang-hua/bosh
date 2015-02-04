@@ -61,8 +61,9 @@ module Bosh::Cli
         final ? @final_storage : @dev_storage)
     end
 
-    def install_into_final(artifact, metadata, origin_file)
-      install(artifact, metadata, origin_file, @final_index, @final_storage)
+    def copy_from_dev_to_final(artifact)
+      metadata = lookup_dev(artifact)
+      install(artifact, metadata, artifact.tarball_path, @final_index, @final_storage)
     end
 
     def install(artifact, metadata, origin_file, index, storage)

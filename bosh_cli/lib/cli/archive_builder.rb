@@ -12,7 +12,7 @@ module Bosh::Cli
       resource.run_script(:prepare)
 
       artifact = with_indent('  ') do
-        locate_tarball(resource) || generate_tarball(resource)
+        locate_artifact(resource) || generate_tarball(resource)
       end
 
       upload_tarball(artifact) if final? && !dry_run?
@@ -21,20 +21,14 @@ module Bosh::Cli
     end
 
     def dry_run?
-      @dry_run || !!options[:dry_run]
+      !!options[:dry_run]
     end
 
     def final?
-      @final ||= !!options[:final]
+      !!options[:final]
     end
 
     private
-
-    def artifact_type(resource, plural = false)
-      result = resource.class.name.split('::').last.downcase
-      result += 's' if plural
-      result
-    end
 
     def copy_files(resource)
       resource.files.each do |src, dest|
@@ -48,8 +42,15 @@ module Bosh::Cli
       end
     end
 
-    def locate_tarball(resource)
-      locate_in_final(resource) || locate_in_dev_and_maybe_install_to_final(resource)
+    def locate_artifact(resource)
+      artifact = locate_in_final(resource)
+      if artifact.nil?
+        artifact = locate_in_dev(resource)
+        if artifact && final? && !dry_run?
+          @archive_repository.copy_from_dev_to_final(artifact)
+        end
+      end
+      artifact
     end
 
     def locate_in_final(resource)
@@ -72,9 +73,7 @@ module Bosh::Cli
         return nil
       end
 
-      desc = "#{resource.name} (#{version})"
-
-      tarball_path = @archive_repository.find_file(blobstore_id, sha1, version, "package #{desc}")
+      tarball_path = @archive_repository.find_file(blobstore_id, sha1, version, "package #{resource.name} (#{version})")
 
       artifact.tarball_path = tarball_path
       artifact
@@ -84,7 +83,7 @@ module Bosh::Cli
       raise BlobstoreError, "Blobstore error: #{e}"
     end
 
-    def locate_in_dev_and_maybe_install_to_final(resource)
+    def locate_in_dev(resource)
       artifact = BuildArtifact.new(resource)
       say('Dev version:', '   ')
       metadata = @archive_repository.lookup_dev(artifact)
@@ -110,11 +109,6 @@ module Bosh::Cli
         return nil
       end
 
-      if final? && !dry_run?
-        @archive_repository.install_into_final(artifact, metadata, tarball_path)
-      end
-
-      @used_dev_version = true
       artifact.tarball_path = tarball_path
       artifact
     end
@@ -152,14 +146,14 @@ module Bosh::Cli
 
     # TODO: move out of builder
     def upload_tarball(artifact)
-      item = @archive_repository.lookup_final(artifact)
+      metadata = @archive_repository.lookup_final(artifact)
 
-      unless item
+      unless metadata
         say("Failed to find entry '#{artifact.fingerprint}' in index, check local storage")
         return
       end
 
-      if item['blobstore_id']
+      if metadata['blobstore_id']
         return
       end
 
@@ -171,8 +165,8 @@ module Bosh::Cli
       end
 
       say("Uploaded, blobstore id '#{blobstore_id}'")
-      item['blobstore_id'] = blobstore_id
-      @archive_repository.update_final_version(artifact, item)
+      metadata['blobstore_id'] = blobstore_id
+      @archive_repository.update_final_version(artifact, metadata)
 
       artifact.notes = ['new version']
       artifact.new_version = true
