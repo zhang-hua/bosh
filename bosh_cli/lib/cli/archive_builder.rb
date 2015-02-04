@@ -11,9 +11,8 @@ module Bosh::Cli
       @archive_repository = @archive_repository_provider.provide(resource)
       resource.run_script(:prepare)
 
-      artifact = BuildArtifact.new(resource)
-      with_indent('  ') do
-        artifact.tarball_path = locate_tarball(resource, artifact) || generate_tarball(resource, artifact)
+      artifact = with_indent('  ') do
+        locate_tarball(resource) || generate_tarball(resource)
       end
 
       artifact.notes = notes
@@ -53,8 +52,8 @@ module Bosh::Cli
       end
     end
 
-    def locate_tarball(resource, artifact)
-      use_final_version(resource, artifact) || use_dev_version(artifact)
+    def locate_tarball(resource)
+      locate_in_final(resource) || locate_in_dev_and_maybe_install_to_final(resource)
     end
 
     def new_version?
@@ -71,7 +70,8 @@ module Bosh::Cli
       end
     end
 
-    def use_final_version(resource, artifact)
+    def locate_in_final(resource)
+      artifact = BuildArtifact.new(resource)
       say('Final version:', ' ')
 
       item = @archive_repository.lookup_final(artifact)
@@ -96,14 +96,16 @@ module Bosh::Cli
 
       @version = version
       @used_final_version = true
-      tarball_path
+      artifact.tarball_path = tarball_path
+      artifact
     rescue Bosh::Blobstore::NotFound
       raise BlobstoreError, "Final version of '#{name}' not found in blobstore"
     rescue Bosh::Blobstore::BlobstoreError => e
       raise BlobstoreError, "Blobstore error: #{e}"
     end
 
-    def use_dev_version(artifact)
+    def locate_in_dev_and_maybe_install_to_final(resource)
+      artifact = BuildArtifact.new(resource)
       say('Dev version:', '   ')
       metadata = @archive_repository.lookup_dev(artifact)
 
@@ -134,10 +136,12 @@ module Bosh::Cli
 
       @version = version
       @used_dev_version = true
-      tarball_path
+      artifact.tarball_path = tarball_path
+      artifact
     end
 
-    def generate_tarball(resource, artifact)
+    def generate_tarball(resource)
+      artifact = BuildArtifact.new(resource)
       version = artifact.fingerprint
       tmp_file = Tempfile.new(artifact.name)
 
@@ -163,7 +167,8 @@ module Bosh::Cli
       @tarball_generated = true
       say("Generated version #{version}".make_green)
 
-      tarball_path
+      artifact.tarball_path = tarball_path
+      artifact
     end
 
     # TODO: move out of builder
