@@ -20,14 +20,6 @@ module Bosh::Cli
 
     attr_reader :resource
 
-    def build_directory(mode)
-      Pathname(@archive_dir).join(".#{mode}_builds", "#{artifact_type(resource, true)}", resource.name).to_s
-    end
-
-    def find_file(blobstore_id, sha1, version, desc)
-      @final_resolver.find_file(blobstore_id, sha1, version, desc)
-    end
-
     def lookup(resource)
       fingerprint = BuildArtifact.make_fingerprint(resource)
 
@@ -37,14 +29,14 @@ module Bosh::Cli
         version = metadata['version'] || fingerprint
         sha1 = metadata['sha1']
 
-        tarball_path = find_file(blobstore_id, sha1, version, "package #{resource.name} (#{version})") # todo: 'package' vs 'job'
+        tarball_path = @final_resolver.find_file(blobstore_id, sha1, version, "#{artifact_type(resource)} #{resource.name} (#{version})") # todo: 'package' vs 'job'
         BuildArtifact.new(resource.name, metadata, fingerprint, tarball_path, false)
       else
         metadata = @dev_index[fingerprint]
         if metadata
           version = metadata['version'] || fingerprint
-          if has_dev?(version)
-            tarball_path = get_dev(version)
+          if @dev_storage.has_file?(version)
+            tarball_path = @dev_storage.get_file(version)
             if file_checksum(tarball_path) != metadata['sha1']
               raise CorruptedArchive, "#{artifact_type(resource)} #{resource.name} (#{version}) archive at #{tarball_path} corrupted"
             end
@@ -103,12 +95,8 @@ module Bosh::Cli
 
     private
 
-    def has_dev?(version)
-      @dev_storage.has_file?(version)
-    end
-
-    def get_dev(version)
-      @dev_storage.get_file(version)
+    def build_directory(mode)
+      Pathname(@archive_dir).join(".#{mode}_builds", "#{artifact_type(resource, true)}", resource.name).to_s
     end
   end
 
