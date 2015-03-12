@@ -10,7 +10,7 @@ describe "Logging into a director with UAA authentication", type: :integration d
       expect(runner).to have_output 'Email:'
       runner.send_keys 'admin'
       expect(runner).to have_output 'Password:'
-      runner.send_keys 'admin'
+      runner.send_keys 'admin'``
       expect(runner).to have_output 'One Time Code'
       runner.send_keys 'myfancycode'
     end

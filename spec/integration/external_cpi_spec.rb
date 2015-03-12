@@ -6,13 +6,13 @@ describe 'external CPIs', type: :integration do
   describe 'director configured to use external dummy CPI' do
     before do
       current_sandbox.external_cpi_enabled = true
-      current_sandbox.restart_director
+      current_sandbox.director_service.restart
       deploy_simple
     end
 
     after do
       current_sandbox.external_cpi_enabled = false
-      current_sandbox.restart_director
+      current_sandbox.director_service.restart
     end
 
     it 'deploys using the external CPI' do
