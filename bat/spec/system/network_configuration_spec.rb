@@ -13,9 +13,9 @@ describe 'network configuration' do
     @requirements.requirement(deployment, @spec) # 2.5 min on local vsphere
   end
 
-  after(:all) do
-    @requirements.cleanup(deployment)
-  end
+  # after(:all) do
+  #   @requirements.cleanup(deployment)
+  # end
 
   describe 'resolving DNS entries' do
     before { skip 'director not configured with dns' unless dns? }
