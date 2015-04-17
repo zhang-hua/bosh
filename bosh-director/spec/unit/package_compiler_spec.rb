@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 module Bosh::Director
-  describe PackageCompiler do
+  describe PackageCompileStep do
     let(:job) { double('job').as_null_object }
 
     let(:release_version_model) do
@@ -33,7 +33,7 @@ module Bosh::Director
 
       @deployment = Models::Deployment.make(name: 'mycloud')
       @config = instance_double('Bosh::Director::DeploymentPlan::CompilationConfig')
-      @plan = instance_double('Bosh::Director::DeploymentPlan::Planner', compilation: @config, model: @deployment, name: 'mycloud')
+      @plan = instance_double('Bosh::Director::DeploymentPlan::Plan', compilation: @config, model: @deployment, name: 'mycloud')
       @network = instance_double('Bosh::Director::DeploymentPlan::Network', name: 'default')
 
       @n_workers = 3
@@ -132,16 +132,16 @@ module Bosh::Director
           expect(@j_router).to receive(:use_compiled_package).with(cp2)
         end
 
-        compiler = PackageCompiler.new(@plan)
+        compile_step = PackageCompileStep.new(@director_job, @plan)
 
-        compiler.compile
+        compile_step.perform
         # For @stemcell_a we need to compile:
         # [p_dea, p_nginx, p_syslog, p_warden, p_common, p_ruby] = 6
         # For @stemcell_b:
         # [p_nginx, p_common, p_router, p_ruby, p_warden] = 5
-        expect(compiler.compile_tasks_count).to eq(6 + 5)
+        expect(compile_step.compile_tasks_count).to eq(6 + 5)
         # But they are already compiled!
-        expect(compiler.compilations_performed).to eq(0)
+        expect(compile_step.compilations_performed).to eq(0)
 
         expect(log_string).to include("Job templates `cf-release/dea', `cf-release/warden' need to run on stemcell `#{@stemcell_a.model.desc}'")
         expect(log_string).to include("Job templates `cf-release/nginx', `cf-release/router', `cf-release/warden' need to run on stemcell `#{@stemcell_b.model.desc}'")
@@ -153,7 +153,7 @@ module Bosh::Director
         prepare_samples
 
         allow(@plan).to receive(:jobs).and_return([@j_dea, @j_router])
-        compiler = PackageCompiler.new(@plan)
+        compile_step = PackageCompileStep.new(@director_job,@plan)
 
         expect(@network).to receive(:reserve).at_least(@n_workers).times do |reservation|
           expect(reservation).to be_an_instance_of(NetworkReservation)
@@ -212,11 +212,11 @@ module Bosh::Director
         end
 
         @package_set_a.each do |package|
-          expect(compiler).to receive(:with_compile_lock).with(package.id, @stemcell_a.model.id).and_yield
+          expect(compile_step).to receive(:with_compile_lock).with(package.id, @stemcell_a.model.id).and_yield
         end
 
         @package_set_b.each do |package|
-          expect(compiler).to receive(:with_compile_lock).with(package.id, @stemcell_b.model.id).and_yield
+          expect(compile_step).to receive(:with_compile_lock).with(package.id, @stemcell_b.model.id).and_yield
         end
 
         expect(@j_dea).to receive(:use_compiled_package).exactly(6).times
@@ -229,8 +229,8 @@ module Bosh::Director
         expect(@network).to receive(:release).at_least(@n_workers).times
         expect(@director_job).to receive(:task_checkpoint).once
 
-        compiler.compile
-        expect(compiler.compilations_performed).to eq(11)
+        compile_step.perform
+        expect(compile_step.compilations_performed).to eq(11)
 
         @package_set_a.each do |package|
           expect(package.compiled_packages.size).to be >= 1
@@ -275,14 +275,14 @@ module Bosh::Director
                                fingerprint: 'deadbeef')
         template = instance_double('Bosh::Director::DeploymentPlan::Template', release: release_version, package_models: [ package_model ], name: 'fake_template')
         allow(job).to receive_messages(templates: [template])
-        planner = instance_double('Bosh::Director::DeploymentPlan::Planner', compilation: compilation_config, name: 'mycloud')
+        planner = instance_double('Bosh::Director::DeploymentPlan::Plan', compilation: compilation_config, name: 'mycloud')
 
         allow(planner).to receive(:jobs).and_return([job])
 
-        compiler = PackageCompiler.new(planner)
+        compile_step = PackageCompileStep.new(director_job,planner)
 
         expect {
-          compiler.compile
+          compile_step.perform
         }.not_to raise_error
       end
     end
@@ -352,14 +352,14 @@ module Bosh::Director
         expect(@network).to receive(:release).at_most(@n_workers).times
         expect(@director_job).to receive(:task_checkpoint).once
 
-        compiler = PackageCompiler.new(@plan)
+        compile_step = PackageCompileStep.new(@director_job, @plan)
 
         @package_set_a.each do |package|
-          expect(compiler).to receive(:with_compile_lock).with(package.id, @stemcell_a.model.id).and_yield
+          expect(compile_step).to receive(:with_compile_lock).with(package.id, @stemcell_a.model.id).and_yield
         end
 
-        compiler.compile
-        expect(compiler.compilations_performed).to eq(6)
+        compile_step.perform
+        expect(compile_step.compilations_performed).to eq(6)
 
         @package_set_a.each do |package|
           expect(package.compiled_packages.size).to be >= 1
@@ -397,11 +397,11 @@ module Bosh::Director
 
         expect(@network).to receive(:release)
 
-        compiler = PackageCompiler.new(@plan)
-        allow(compiler).to receive(:with_compile_lock).and_yield
+        compile_step = PackageCompileStep.new(@director_job, @plan)
+        allow(compile_step).to receive(:with_compile_lock).and_yield
 
         expect {
-          compiler.compile
+          compile_step.perform
         }.to raise_error(RuntimeError)
       end
     end
@@ -444,9 +444,9 @@ module Bosh::Director
           expect(@cloud).to receive(:delete_vm)
           expect(@network).to receive(:release)
 
-          compiler = PackageCompiler.new(@plan)
-          allow(compiler).to receive(:with_compile_lock).and_yield
-          expect { compiler.compile }.to raise_error(RpcTimeout)
+          compile_step = PackageCompileStep.new(@director_job, @plan)
+          allow(compile_step).to receive(:with_compile_lock).and_yield
+          expect { compile_step.compile }.to raise_error(RpcTimeout)
         end
       end
 
@@ -467,12 +467,12 @@ module Bosh::Director
 
       task = CompileTask.new(package, stemcell, job, 'fake-dependency-key', 'fake-cache-key')
 
-      compiler = PackageCompiler.new(@plan)
+      compile_step = PackageCompileStep.new(@plan)
       fake_compiled_package = instance_double('Bosh::Director::Models::CompiledPackage', name: 'fake')
       allow(task).to receive(:find_compiled_package).and_return(fake_compiled_package)
 
-      allow(compiler).to receive(:with_compile_lock).with(package.id, stemcell.id).and_yield
-      compiler.compile_package(task)
+      allow(compile_step).to receive(:with_compile_lock).with(package.id, stemcell.id).and_yield
+      compile_step.compile_package(task)
 
       expect(task.compiled_package).to eq(fake_compiled_package)
     end
@@ -481,7 +481,7 @@ module Bosh::Director
       let(:package) { Models::Package.make }
       let(:stemcell) { Models::Stemcell.make }
       let(:task) { CompileTask.new(package, stemcell, job, 'fake-dependency-key', 'fake-cache-key') }
-      let(:compiler) { PackageCompiler.new(@plan) }
+      let(:compile_step) { PackageCompileStep.new(@director_job, @plan) }
       let(:cache_key) { 'cache key' }
 
       before do
@@ -491,20 +491,20 @@ module Bosh::Director
       end
 
       it 'should check if compiled package is in global blobstore' do
-        allow(compiler).to receive(:with_compile_lock).with(package.id, stemcell.id).and_yield
+        allow(compile_step).to receive(:with_compile_lock).with(package.id, stemcell.id).and_yield
 
         expect(BlobUtil).to receive(:exists_in_global_cache?).with(package, cache_key).and_return(true)
         allow(task).to receive(:find_compiled_package)
         expect(BlobUtil).not_to receive(:save_to_global_cache)
-        allow(compiler).to receive(:prepare_vm)
+        allow(compile_step).to receive(:prepare_vm)
         compiled_package = instance_double('Bosh::Director::Models::CompiledPackage', name: 'fake')
         allow(Models::CompiledPackage).to receive(:create).and_return(compiled_package)
 
-        compiler.compile_package(task)
+        compile_step.compile_package(task)
       end
 
       it 'should save compiled package to global cache if not exists' do
-        expect(compiler).to receive(:with_compile_lock).with(package.id, stemcell.id).and_yield
+        expect(compile_step).to receive(:with_compile_lock).with(package.id, stemcell.id).and_yield
 
         allow(task).to receive(:find_compiled_package)
         compiled_package = instance_double(
@@ -513,24 +513,24 @@ module Bosh::Director
           stemcell: stemcell, blobstore_id: 'some blobstore id')
         expect(BlobUtil).to receive(:exists_in_global_cache?).with(package, cache_key).and_return(false)
         expect(BlobUtil).to receive(:save_to_global_cache).with(compiled_package, cache_key)
-        allow(compiler).to receive(:prepare_vm)
+        allow(compile_step).to receive(:prepare_vm)
         allow(Models::CompiledPackage).to receive(:create).and_return(compiled_package)
 
-        compiler.compile_package(task)
+        compile_step.compile_package(task)
       end
 
       it 'only checks the global cache if Config.use_compiled_package_cache? is set' do
         allow(Config).to receive(:use_compiled_package_cache?).and_return(false)
 
-        allow(compiler).to receive(:with_compile_lock).with(package.id, stemcell.id).and_yield
+        allow(compile_step).to receive(:with_compile_lock).with(package.id, stemcell.id).and_yield
 
         expect(BlobUtil).not_to receive(:exists_in_global_cache?)
         expect(BlobUtil).not_to receive(:save_to_global_cache)
-        allow(compiler).to receive(:prepare_vm)
+        allow(compile_step).to receive(:prepare_vm)
         compiled_package = instance_double('Bosh::Director::Models::CompiledPackage', name: 'fake')
         allow(Models::CompiledPackage).to receive(:create).and_return(compiled_package)
 
-        compiler.compile_package(task)
+        compile_step.compile_package(task)
       end
     end
 
@@ -558,9 +558,9 @@ module Bosh::Director
         end
 
         it 'should clean up the compilation vm if it failed' do
-          compiler = described_class.new(deployment_plan)
+          compile_step = described_class.new(deployment_plan)
 
-          allow(compiler).to receive_messages(reserve_network: double('network_reservation'))
+          allow(compile_step).to receive_messages(reserve_network: double('network_reservation'))
           client = instance_double('Bosh::Director::AgentClient')
           allow(client).to receive(:wait_until_ready).and_raise(RpcTimeout)
           allow(AgentClient).to receive_messages(with_defaults: client)
@@ -572,10 +572,10 @@ module Bosh::Director
           expect(reuser).to receive(:remove_vm).with(vm_data)
           expect(vm_data).to receive(:release)
 
-          expect(compiler).to receive(:tear_down_vm).with(vm_data)
+          expect(compile_step).to receive(:tear_down_vm).with(vm_data)
 
           expect {
-            compiler.prepare_vm(stemcell) do
+            compile_step.prepare_vm(stemcell) do
               # nothing
             end
           }.to raise_error RpcTimeout

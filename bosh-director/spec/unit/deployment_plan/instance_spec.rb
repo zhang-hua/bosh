@@ -10,7 +10,7 @@ module Bosh::Director::DeploymentPlan
 
     let(:deployment) { Bosh::Director::Models::Deployment.make(name: 'fake-deployment') }
     let(:plan) do
-      instance_double('Bosh::Director::DeploymentPlan::Planner', {
+      instance_double('Bosh::Director::DeploymentPlan::Plan', {
         name: 'fake-deployment',
         canonical_name: 'mycloud',
         model: deployment,

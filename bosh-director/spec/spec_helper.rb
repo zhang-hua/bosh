@@ -202,4 +202,64 @@ def check_event_log
   yield events
 end
 
+def strip_heredoc(str)
+  indent = str.scan(/^[ \t]*(?=\S)/).min.size || 0
+  str.gsub(/^[ \t]{#{indent}}/, '')
+end
 
+module ManifestHelper
+  class << self
+    def default_deployment_manifest(name='deployment-name')
+      {
+        'name' => name,
+        'releases' => [release],
+        'update' => {
+          'max_in_flight' => 10,
+          'canaries' => 2,
+          'canary_watch_time' => 1000,
+          'update_watch_time' => 1000,
+        },
+      }
+    end
+
+    def default_legacy_manifest(name='deployment-name')
+      default_deployment_manifest(name).merge! default_iaas_manifest
+    end
+
+    def default_iaas_manifest
+      {
+        'networks' => [ManifestHelper::network],
+        'resource_pools' => [ManifestHelper::resource_pool],
+        'compilation' => {
+          'workers' => 1,
+          'network'=>'network-name',
+          'cloud_properties' => {},
+        },
+      }
+    end
+
+    def release(release_options = {})
+      {
+        'name' => 'release-name',
+        'version' => 'latest'
+      }.merge(release_options)
+    end
+
+    def network(name='network-name')
+      { 'name' => name, 'subnets' => [] }
+    end
+
+    def disk_pool(name='dp-name')
+      {'name' => name, 'disk_size' => 10000}
+    end
+
+    def job(name='job-name', overrides={})
+      {'name' => name, 'resource_pool' => 'rp-name', 'instances' => 1, 'networks' => [{'name' => 'network-name'}], 'templates' => [{'name' => 'template-name'}]}
+        .merge(overrides)
+    end
+
+    def resource_pool(name='rp-name')
+      {'name' => name, 'network'=>'network-name', 'stemcell'=> {'name' => 'default','version'=>'1'}, 'cloud_properties'=>{}}
+    end
+  end
+end

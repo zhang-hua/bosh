@@ -7,7 +7,7 @@ describe Bosh::Director::JobUpdaterFactory do
 
   describe '#new_job_updater' do
     it 'returns job updater' do
-      deployment_plan = instance_double('Bosh::Director::DeploymentPlan::Planner')
+      deployment_plan = instance_double('Bosh::Director::DeploymentPlan::Plan')
       job = instance_double('Bosh::Director::DeploymentPlan::Job')
 
       job_renderer = instance_double('Bosh::Director::JobRenderer')

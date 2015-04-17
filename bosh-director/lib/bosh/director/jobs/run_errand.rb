@@ -24,9 +24,9 @@ module Bosh::Director
     def perform
       deployment_model = @deployment_manager.find_by_name(@deployment_name)
       manifest = Psych.load(deployment_model.manifest)
-      deployment = DeploymentPlan::Planner.parse(manifest, {}, event_log, logger)
+      deployment_plan = DeploymentPlan::Plan.parse(manifest, deployment_model.iaas_config.id, {}, event_log, logger)
 
-      job = deployment.job(@errand_name)
+      job = deployment_plan.job(@errand_name)
       if job.nil?
         raise JobNotFound, "Errand `#{@errand_name}' doesn't exist"
       end
@@ -52,8 +52,8 @@ module Bosh::Director
         end
       }
 
-      with_deployment_lock(deployment) do
-        with_updated_instances(deployment, job) do
+      with_deployment_lock(deployment_plan) do
+        with_updated_instances(deployment_plan, job) do
           logger.info('Starting to run errand')
           runner.run(&cancel_blk)
         end

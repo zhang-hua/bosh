@@ -58,7 +58,7 @@ module Bosh::Director
         @network_settings = {'network' => 'settings'}
         allow(@vm).to receive(:network_settings).and_return(@network_settings)
         @deployment = Models::Deployment.make
-        @deployment_plan = instance_double('Bosh::Director::DeploymentPlan::Planner')
+        @deployment_plan = instance_double('Bosh::Director::DeploymentPlan::Plan')
         allow(@deployment_plan).to receive(:model).and_return(@deployment)
         @stemcell = Models::Stemcell.make
         @stemcell_spec = instance_double('Bosh::Director::DeploymentPlan::Stemcell')
@@ -113,7 +113,7 @@ module Bosh::Director
       let(:vm) { instance_double('Bosh::Director::DeploymentPlan::Vm', network_settings: network_settings, bound_instance: instance) }
       let(:resource_pool_spec) { {} }
       let(:instance) { instance_double('Bosh::Director::DeploymentPlan::Instance', spec: {}) }
-      let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Planner', name: 'foo') }
+      let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Plan', name: 'foo') }
       let(:apply_spec) do
         {
             'deployment' => deployment_plan.name,

@@ -10,6 +10,9 @@ module Bosh::Director
       allow(Config).to receive(:cloud).and_return(@cloud)
       @deployment_plan = double('deployment_plan')
       @deleter = InstanceDeleter.new(@deployment_plan)
+
+      # GAH!!!
+      allow(Config).to receive(:dns).and_return({ 'servers' => ['8.8.8.8'] })
     end
 
     describe '#delete_instances' do

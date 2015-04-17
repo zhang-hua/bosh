@@ -1,15 +1,33 @@
 module Bosh::Director
   module DeploymentPlan
-    class Updater
-      def initialize(base_job, event_log, resource_pools, assembler, deployment_plan, multi_job_updater)
+    class UpdateStep
+
+
+      def initialize(base_job, event_log, resource_pools, assembler, deployment_plan, deployment, multi_job_updater)
         @base_job = base_job
         @logger = base_job.logger
         @event_log = event_log
         @resource_pools = resource_pools
         @assembler = assembler
         @deployment_plan = deployment_plan
+        @deployment = deployment
         @multi_job_updater = multi_job_updater
       end
+
+      def perform
+        begin
+          @logger.info('Updating deployment')
+          update
+          @deployment_plan.update_releases!
+          @logger.info('Committing updates')
+          @deployment_plan.commit!
+          @logger.info('Finished updating deployment')
+        ensure
+          @deployment_plan.update_stemcell_references!
+        end
+      end
+
+      private
 
       def update
         @event_log.begin_stage('Preparing DNS', 1)

@@ -8,7 +8,7 @@ module Bosh::Director
       include ValidationHelper
 
       # @return [DeploymentPlan] associated deployment
-      attr_accessor :deployment
+  #    attr_accessor :deployment
 
       # @return [Integer] number of worker VMs to use
       attr_accessor :workers
@@ -44,10 +44,8 @@ module Bosh::Director
                 "Compilation config references an unknown " +
                 "network `#{network_name}'"
         end
-        @cloud_properties = safe_property(
-            compilation_config, "cloud_properties", :class => Hash)
-        @env = safe_property(compilation_config, "env", :class => Hash,
-                             :optional => true, :default => {})
+        @cloud_properties = safe_property(compilation_config, "cloud_properties", :class => Hash)
+        @env = safe_property(compilation_config, "env", :class => Hash, :optional => true, :default => {})
       end
     end
   end

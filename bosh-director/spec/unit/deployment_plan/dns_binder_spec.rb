@@ -2,8 +2,8 @@ require 'spec_helper'
 
 module Bosh::Director
   describe DeploymentPlan::DnsBinder do
-    subject { described_class.new(deployment) }
-    let (:deployment) { instance_double('Bosh::Director::DeploymentPlan::Planner') }
+    subject { DeploymentPlan::DnsBinder.new(deployment_plan) }
+    let (:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Plan') }
 
     describe '#bind_deployment' do
       context 'when dns is enabled' do
@@ -16,7 +16,7 @@ module Bosh::Director
 
         it "should create the domain if it doesn't exist" do
           domain = nil
-          expect(deployment).to receive(:dns_domain=) { |*args| domain = args.first }
+          expect(deployment_plan).to receive(:dns_domain=) { |*args| domain = args.first }
           subject.bind_deployment
 
           expect(Models::Dns::Domain.count).to eq(1)
@@ -27,7 +27,7 @@ module Bosh::Director
 
         it 'should reuse the domain if it exists' do
           domain = Models::Dns::Domain.make(:name => 'bosh', :type => 'NATIVE')
-          expect(deployment).to receive(:dns_domain=).with(domain)
+          expect(deployment_plan).to receive(:dns_domain=).with(domain)
           subject.bind_deployment
 
           expect(Models::Dns::Domain.count).to eq(1)
@@ -35,7 +35,7 @@ module Bosh::Director
 
         it "should create the SOA, NS & A record if they doesn't exist" do
           domain = Models::Dns::Domain.make(:name => 'bosh', :type => 'NATIVE')
-          expect(deployment).to receive(:dns_domain=)
+          expect(deployment_plan).to receive(:dns_domain=)
           subject.bind_deployment
 
           expect(Models::Dns::Record.count).to eq(3)
@@ -54,7 +54,7 @@ module Bosh::Director
           a = Models::Dns::Record.make(:domain => domain, :name => 'ns.bosh',
             :type => 'A', :content => '1.2.3.4',
             :ttl => 14400) # 4h
-          expect(deployment).to receive(:dns_domain=)
+          expect(deployment_plan).to receive(:dns_domain=)
           subject.bind_deployment
 
           soa.refresh

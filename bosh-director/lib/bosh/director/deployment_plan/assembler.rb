@@ -14,12 +14,6 @@ module Bosh::Director
       @blobstore = App.instance.blobstores.blobstore
     end
 
-    # Binds deployment DB record to a plan
-    # @return [void]
-    def bind_deployment
-      @deployment_plan.bind_model
-    end
-
     # Binds release DB record(s) to a plan
     # @return [void]
     def bind_releases

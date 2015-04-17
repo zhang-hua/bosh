@@ -80,7 +80,7 @@ module Bosh::Director
           },
           'features' => {
             'dns' => {
-              'status' => true,
+              'status' => false,
               'extras' => {'domain_name' => 'bosh'}
             },
             'compiled_package_cache' => {

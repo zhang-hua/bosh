@@ -5,7 +5,7 @@ describe Bosh::Director::DeploymentPlan::Job do
   let(:event_log)  { instance_double('Bosh::Director::EventLog::Log', warn_deprecated: nil) }
 
   let(:deployment) { Bosh::Director::Models::Deployment.make }
-  let(:plan)       { instance_double('Bosh::Director::DeploymentPlan::Planner', model: deployment) }
+  let(:plan)       { instance_double('Bosh::Director::DeploymentPlan::Plan', model: deployment) }
   let(:resource_pool) { instance_double('Bosh::Director::DeploymentPlan::ResourcePool', reserve_capacity: nil) }
   let(:network) { instance_double('Bosh::Director::DeploymentPlan::Network') }
 

@@ -10,7 +10,7 @@ describe Bosh::Director::DeploymentPlan::Stemcell do
   end
 
   def make_plan(deployment = nil)
-    instance_double('Bosh::Director::DeploymentPlan::Planner', :model => deployment)
+    instance_double('Bosh::Director::DeploymentPlan::Plan', :model => deployment)
   end
 
   def make_deployment(name)

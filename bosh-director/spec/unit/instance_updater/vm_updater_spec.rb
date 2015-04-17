@@ -342,7 +342,7 @@ module Bosh::Director
       before { allow(deployment_vm).to receive('model=').with(vm_model)}
 
       before { allow(job).to receive(:deployment).with(no_args).and_return(deployment_plan) }
-      let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Planner', model: deployment_model) }
+      let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Plan', model: deployment_model) }
       let(:deployment_model) { instance_double('Bosh::Director::Models::Deployment') }
 
       before { allow(job).to receive(:resource_pool).with(no_args).and_return(resource_pool) }

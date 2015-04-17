@@ -43,8 +43,8 @@ module Bosh::Director
         # we get the deployment here even though it isn't used here, to make sure
         # the call returns a 404 if the deployment doesn't exist
         @deployment_manager.find_by_name(params[:deployment])
-        latest_cloud_config = Bosh::Director::Api::CloudConfigManager.new.latest
-        task = @deployment_manager.create_deployment(@user, request.body, latest_cloud_config, options)
+        latest_iaas_config = Bosh::Director::Api::CloudConfigManager.new.latest
+        task = @deployment_manager.create_deployment(@user, request.body, latest_iaas_config, options)
         redirect "/tasks/#{task.id}"
       end
 
@@ -68,8 +68,8 @@ module Bosh::Director
 
         deployment = @deployment_manager.find_by_name(params[:deployment])
         manifest = request.content_length.nil? ? StringIO.new(deployment.manifest) : request.body
-        latest_cloud_config = Bosh::Director::Api::CloudConfigManager.new.latest
-        task = @deployment_manager.create_deployment(@user, manifest, latest_cloud_config, options)
+        latest_iaas_config = Bosh::Director::Api::CloudConfigManager.new.latest
+        task = @deployment_manager.create_deployment(@user, manifest, latest_iaas_config, options)
         redirect "/tasks/#{task.id}"
       end
 
@@ -138,15 +138,15 @@ module Bosh::Director
       end
 
       get '/' do
-        latest_cloud_config = Api::CloudConfigManager.new.latest
+        latest_iaas_config = Models::IaasConfig.latest
         deployments = Models::Deployment.order_by(:name.asc).map do |deployment|
-        cloud_config = if deployment.cloud_config.nil?
-                         'none'
-                       elsif deployment.cloud_config == latest_cloud_config
-                         'latest'
-                       else
-                         'outdated'
-                       end
+          iaas_config = if deployment.iaas_config.nil?
+                           'none'
+                         elsif deployment.iaas_config == latest_iaas_config
+                           'latest'
+                         else
+                           'outdated'
+                         end
 
           {
             'name' => deployment.name,
@@ -162,7 +162,7 @@ module Bosh::Director
                 'version' => sc.version
               }
             end,
-            'cloud_config' => cloud_config
+            'cloud_config' => iaas_config
           }
         end
 
@@ -269,9 +269,9 @@ module Bosh::Director
       post '/', :consumes => :yaml do
         options = {}
         options['recreate'] = true if params['recreate'] == 'true'
-        latest_cloud_config = Bosh::Director::Api::CloudConfigManager.new.latest
+        latest_iaas_config = Bosh::Director::Api::CloudConfigManager.new.latest
 
-        task = @deployment_manager.create_deployment(@user, request.body, latest_cloud_config, options)
+        task = @deployment_manager.create_deployment(@user, request.body, latest_iaas_config, options)
         redirect "/tasks/#{task.id}"
       end
 
@@ -294,7 +294,7 @@ module Bosh::Director
         deployment = @deployment_manager.find_by_name(params[:deployment_name])
 
         manifest = Psych.load(deployment.manifest)
-        deployment_plan = DeploymentPlan::Planner.parse(manifest, {}, Config.event_log, Config.logger)
+        deployment_plan = DeploymentPlan::Plan.parse(manifest, nil, {}, Config.event_log, Config.logger)
 
         errands = deployment_plan.jobs.select(&:can_run_as_errand?)
 

@@ -20,7 +20,7 @@ module Bosh::Director::DeploymentPlan
     end
 
     let(:network) { instance_double('Bosh::Director::DeploymentPlan::Network') }
-    let(:plan) { instance_double('Bosh::Director::DeploymentPlan::Planner') }
+    let(:plan) { instance_double('Bosh::Director::DeploymentPlan::Plan') }
 
     before { allow(plan).to receive(:network).with('test').and_return(network) }
 

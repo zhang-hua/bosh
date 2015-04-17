@@ -34,6 +34,8 @@ module Bosh::Director
       )
 
       # add A record for name server
+      # TODO: (CTI) determine why we are looking for 'address' here,
+      # when it appears that 'server' is the provided key.
       Models::Dns::Record.find_or_create(
         :domain_id => domain.id,
         :name => dns_ns_record,

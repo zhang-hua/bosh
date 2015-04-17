@@ -16,70 +16,29 @@ module Bosh::Director
       # appropriate instance spec modifiers)
       VALID_JOB_STATES = %w(started stopped detached recreate restart)
 
-      # @return [String] Job name
       attr_accessor :name
-
-      # @return [String] Lifecycle profile
       attr_accessor :lifecycle
-
-      # @return [String] Job canonical name (mostly for DNS)
       attr_accessor :canonical_name
-
-      # @return [DiskPool] Persistent disk pool (or nil)
       attr_accessor :persistent_disk_pool
-
-      # @return [DeploymentPlan] Current deployment plan
       attr_accessor :deployment
-
-      # @return [DeploymentPlan::ReleaseVersion] Release this job belongs to
       attr_accessor :release
-
-      # @return [DeploymentPlan::ResourcePool] Resource pool this job should
-      #   be run in
       attr_accessor :resource_pool
-
-      # @return [DeploymentPlan::Network] Job default network
       attr_accessor :default_network
-
-      # @return [Array<DeploymentPlan::Template] Templates included into the job
       attr_accessor :templates
-
-      # @return [Hash] Job properties
       attr_accessor :properties
-
-      # @return [Hash<String, DeploymentPlan::Package] Packages included into
-      #   this job
       attr_accessor :packages
-
-      # @return [DeploymentPlan::UpdateConfig] Job update settings
       attr_accessor :update
-
-      # @return [Array<DeploymentPlan::Instance>] All job instances
       attr_accessor :instances
-
-      # @return [Array<Models::Instance>] List of excess instance models that
-      #   are not needed for current deployment
       attr_accessor :unneeded_instances
-
-      # @return [String] Expected job state
       attr_accessor :state
-
-      # @return [Hash<Integer, String>] Individual instance expected states
       attr_accessor :instance_states
-
       attr_accessor :all_properties
 
-      # @param [Bosh::Director::DeploymentPlan::Planner] deployment Deployment plan
-      # @param [Hash] job_spec Raw job spec from the deployment manifest
-      # @param [Bosh::Director::EventLog::Log] event_log Event log for recording deprecations
-      # @param [Logger] logger Log for director logging
-      # @return [Bosh::Director::DeploymentPlan::Job]
       def self.parse(deployment, job_spec, event_log, logger)
         parser = JobSpecParser.new(deployment, event_log, logger)
         parser.parse(job_spec)
       end
 
-      # @param [Bosh::Director::DeploymentPlan] deployment Deployment plan
       def initialize(deployment)
         @deployment = deployment
 
@@ -117,9 +76,6 @@ module Bosh::Director
         job_spec["templates"] = [template]
       end
 
-      # Returns job spec as a Hash. To be used by all instances of the job to
-      # populate agent state.
-      # @return [Hash] Hash representation
       def spec
         first_template = @templates[0]
         result = {
@@ -154,7 +110,6 @@ module Bosh::Director
 
       # Returns package specs for all packages in the job indexed by package
       # name. To be used by all instances of the job to populate agent state.
-      # @return [Hash<String, Hash>] All package specs indexed by package name
       def package_spec
         result = {}
         @packages.each do |name, package|
@@ -165,22 +120,16 @@ module Bosh::Director
       end
 
       # Returns job instance by index
-      # @param [Integer] index
-      # @return [DeploymentPlan::Instance] index-th instance
       def instance(index)
         @instances[index]
       end
 
       # Returns the state state of job instance by its index
-      # @param [Integer] index Instance index
-      # @return [String, nil] Instance state (nil if not specified)
       def instance_state(index)
         @instance_states[index] || @state
       end
 
       # Registers compiled package with this job.
-      # @param [Models::CompiledPackage] compiled_package_model Compiled package
-      # @return [void]
       def use_compiled_package(compiled_package_model)
         compiled_package = CompiledPackage.new(compiled_package_model)
         @packages[compiled_package.name] = compiled_package

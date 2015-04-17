@@ -25,12 +25,12 @@ module Bosh::Director
           return
         end
 
-        cloud_configs = Bosh::Director::Api::CloudConfigManager.new.list(limit)
+        iaas_configs = Bosh::Director::Api::CloudConfigManager.new.list(limit)
         json_encode(
-          cloud_configs.map do |cloud_config|
+          iaas_configs.map do |iaas_config|
             {
-              "properties" => cloud_config.properties,
-              "created_at" => cloud_config.created_at,
+              "properties" => iaas_config.properties,
+              "created_at" => iaas_config.created_at,
             }
         end
         )

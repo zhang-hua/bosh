@@ -6,11 +6,11 @@ describe Bosh::Director::DeploymentPlan::Vm do
     @network = instance_double('Bosh::Director::DeploymentPlan::Network')
     allow(@network).to receive(:name).and_return('test_network')
     allow(@network).to receive(:network_settings).with(@reservation).and_return({'ip' => 1})
-    @deployment = instance_double('Bosh::Director::DeploymentPlan::Planner')
+    @deployment_plan = instance_double('Bosh::Director::DeploymentPlan::Plan')
     @resource_pool = instance_double('Bosh::Director::DeploymentPlan::ResourcePool')
     allow(@resource_pool).to receive(:network).and_return(@network)
     allow(@resource_pool).to receive(:spec).and_return({'size' => 'small'})
-    allow(@resource_pool).to receive(:deployment_plan).and_return(@deployment)
+    allow(@resource_pool).to receive(:deployment_plan).and_return(@deployment_plan)
     @vm = BD::DeploymentPlan::Vm.new(@resource_pool)
   end
 
@@ -52,25 +52,25 @@ describe Bosh::Director::DeploymentPlan::Vm do
 
   describe :resource_pool_changed? do
     it 'should return true when BOSH Agent provides a different spec' do
-      allow(@deployment).to receive(:recreate).and_return(false)
+      allow(@deployment_plan).to receive(:recreate).and_return(false)
       @vm.current_state = {'resource_pool' => {'foo' => 'bar'}}
       expect(@vm.resource_pool_changed?).to eq(true)
     end
 
     it 'should return false when BOSH Agent provides the same spec' do
-      allow(@deployment).to receive(:recreate).and_return(false)
+      allow(@deployment_plan).to receive(:recreate).and_return(false)
       @vm.current_state = {'resource_pool' => {'size' => 'small'}}
       expect(@vm.resource_pool_changed?).to eq(false)
     end
 
     it 'should return true when the deployment is being recreated' do
-      allow(@deployment).to receive(:recreate).and_return(true)
+      allow(@deployment_plan).to receive(:recreate).and_return(true)
       @vm.current_state = {'resource_pool' => {'size' => 'small'}}
       expect(@vm.resource_pool_changed?).to eq(true)
     end
 
     it 'should return true when VM env changes' do
-      allow(@deployment).to receive(:recreate).and_return(false)
+      allow(@deployment_plan).to receive(:recreate).and_return(false)
       allow(@resource_pool).to receive(:env).and_return({'foo' => 'bar'})
 
       @vm.current_state = {'resource_pool' => {'size' => 'small'}}

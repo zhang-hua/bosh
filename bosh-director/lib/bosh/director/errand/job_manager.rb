@@ -1,10 +1,5 @@
 module Bosh::Director
   class Errand::JobManager
-    # @param [Bosh::Director::DeploymentPlan::Planner] deployment
-    # @param [Bosh::Director::DeploymentPlan::Job] job
-    # @param [Bosh::Blobstore::Client] blobstore
-    # @param [Bosh::Director::EventLog::Log] event_log
-    # @param [Logger] logger
     def initialize(deployment, job, blobstore, event_log, logger)
       @deployment = deployment
       @job = job
@@ -13,8 +8,6 @@ module Bosh::Director
       @logger = logger
     end
 
-    # Creates/updates all errand job instances
-    # @return [void]
     def update_instances
       dns_binder = DeploymentPlan::DnsBinder.new(@deployment)
       dns_binder.bind_deployment
@@ -29,8 +22,6 @@ module Bosh::Director
       job_updater.update
     end
 
-    # Deletes all errand job instances
-    # @return [void]
     def delete_instances
       instances = @job.instances.map(&:model).compact
       if instances.empty?
@@ -48,8 +39,6 @@ module Bosh::Director
 
     private
 
-    # Deallocates all errand VMs
-    # @return [void]
     def deallocate_vms
       @logger.info('Deallocating errand VMs')
       instance_vm_cids = @job.instances.map { |instance| instance.model.vm.cid }

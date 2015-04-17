@@ -15,9 +15,9 @@ module Bosh::Director
         properties = "---\nfoo: bar"
         expect {
           post '/', properties, { 'CONTENT_TYPE' => 'text/yaml' }
-        }.to change(Bosh::Director::Models::CloudConfig, :count).from(0).to(1)
+        }.to change(Bosh::Director::Models::IaasConfig, :count).from(0).to(1)
 
-        expect(Bosh::Director::Models::CloudConfig.first.properties).to eq(properties)
+        expect(Bosh::Director::Models::IaasConfig.first.properties).to eq(properties)
       end
     end
 
@@ -25,17 +25,17 @@ module Bosh::Director
       it 'returns the number of cloud configs specified by ?limit' do
         authorize('admin', 'admin')
 
-        oldest_cloud_config = Bosh::Director::Models::CloudConfig.new(
+        oldest_iaas_config = Bosh::Director::Models::IaasConfig.new(
           properties: "config_from_time_immortal",
           created_at: Time.now - 3,
         ).save
-        older_cloud_config = Bosh::Director::Models::CloudConfig.new(
+        older_iaas_config = Bosh::Director::Models::IaasConfig.new(
           properties: "config_from_last_year",
           created_at: Time.now - 2,
         ).save
-        newer_cloud_config_properties = "---\nsuper_shiny: new_config"
-        newer_cloud_config = Bosh::Director::Models::CloudConfig.new(
-          properties: newer_cloud_config_properties,
+        newer_iaas_config_properties = "---\nsuper_shiny: new_config"
+        newer_iaas_config = Bosh::Director::Models::IaasConfig.new(
+          properties: newer_iaas_config_properties,
           created_at: Time.now - 1,
         ).save
 
@@ -44,7 +44,7 @@ module Bosh::Director
 
         expect(last_response.status).to eq(200)
         expect(JSON.parse(last_response.body).count).to eq(2)
-        expect(JSON.parse(last_response.body).first["properties"]).to eq(newer_cloud_config_properties)
+        expect(JSON.parse(last_response.body).first["properties"]).to eq(newer_iaas_config_properties)
       end
 
       it 'returns STATUS 400 if limit was not specified or malformed' do

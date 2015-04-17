@@ -143,8 +143,8 @@ module Bosh::Director
             stemcell_1_2 = Models::Stemcell.create(name: "stemcell-1", version: 2, cid: 123)
             stemcell_2_1 = Models::Stemcell.create(name: "stemcell-2", version: 1, cid: 124)
 
-            old_cloud_config = Models::CloudConfig.create(properties: "", created_at: Time.now - 60)
-            new_cloud_config = Models::CloudConfig.create(properties: "", created_at: Time.now)
+            old_iaas_config = Models::IaasConfig.create(properties: "", created_at: Time.now - 60)
+            new_iaas_config = Models::IaasConfig.create(properties: "", created_at: Time.now)
 
 
             deployment_3 = Models::Deployment.create(
@@ -153,7 +153,7 @@ module Bosh::Director
 
             deployment_2 = Models::Deployment.create(
               name: "deployment-2",
-              cloud_config: new_cloud_config,
+              iaas_config: new_iaas_config,
             ).tap do |deployment|
               deployment.add_stemcell(stemcell_1_1)
               deployment.add_stemcell(stemcell_1_2)
@@ -163,7 +163,7 @@ module Bosh::Director
 
             deployment_1 = Models::Deployment.create(
               name: "deployment-1",
-              cloud_config: old_cloud_config,
+              iaas_config: old_iaas_config,
             ).tap do |deployment|
               deployment.add_stemcell(stemcell_1_1)
               deployment.add_stemcell(stemcell_2_1)
@@ -428,13 +428,13 @@ module Bosh::Director
             before { allow(Config).to receive(:logger).with(no_args).and_return(logger) }
 
             before do
-              allow(DeploymentPlan::Planner).to receive(:parse).
-                with({'manifest' => true}, {}, event_log, logger).
-                and_return(deployment)
+              allow(DeploymentPlan::Plan).to receive(:parse).
+                with({'manifest' => true}, nil, {}, event_log, logger).
+                and_return(deployment_plan)
             end
-            let(:deployment) { instance_double('Bosh::Director::DeploymentPlan::Planner', name: 'deployment') }
+            let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Plan', name: 'deployment') }
 
-            before { allow(deployment).to receive(:jobs).and_return(jobs) }
+            before { allow(deployment_plan).to receive(:jobs).and_return(jobs) }
             let(:jobs) { [
               instance_double('Bosh::Director::DeploymentPlan::Job', name: 'an-errand', can_run_as_errand?: true),
               instance_double('Bosh::Director::DeploymentPlan::Job', name: 'a-service', can_run_as_errand?: false),

@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe Bosh::Director::DeploymentPlan::VipNetwork do
-  before { @deployment_plan = instance_double('Bosh::Director::DeploymentPlan::Planner') }
+  before { @deployment_plan = instance_double('Bosh::Director::DeploymentPlan::Plan') }
 
   describe :initialize do
     it "should require cloud properties" do

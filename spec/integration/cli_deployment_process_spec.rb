@@ -101,4 +101,20 @@ Deployments total: 1
     bosh_runner.run('deploy')
     expect(bosh_runner.run('delete deployment minimal')).to match(/Deleted deployment `minimal'/)
   end
+
+  it 'can deploy using a cloud config' do
+    cloud_config_file = yaml_file('minimal_cloud_config', Bosh::Spec::Deployments.minimal_cloud_config)
+    release_filename = spec_asset('valid_release.tgz')
+    deployment_manifest_file = yaml_file('minimal_manifest', Bosh::Spec::Deployments.minimal_manifest_without_cloud_config)
+
+    target_and_login
+
+    bosh_runner.run("update cloud-config #{cloud_config_file.path}")
+    bosh_runner.run("deployment #{deployment_manifest_file.path}")
+    bosh_runner.run("upload release #{release_filename}")
+
+    deploy_output = bosh_runner.run('deploy')
+
+    expect(deploy_output).to match /Deployed `.*' to `Test Director'/
+  end
 end

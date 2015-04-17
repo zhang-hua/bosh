@@ -2,8 +2,8 @@ require 'spec_helper'
 
 module Bosh::Director
   describe Errand::JobManager do
-    subject { described_class.new(deployment, job, blobstore, event_log, logger) }
-    let(:deployment) { instance_double('Bosh::Director::DeploymentPlan::Planner') }
+    subject { described_class.new(deployment_plan, job, blobstore, event_log, logger) }
+    let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Plan') }
     let(:job) { instance_double('Bosh::Director::DeploymentPlan::Job', name: 'job_name') }
     let(:blobstore) { instance_double('Bosh::Blobstore::Client') }
     let(:event_log) { instance_double('Bosh::Director::EventLog::Log') }
@@ -15,7 +15,7 @@ module Bosh::Director
 
       it 'binds vms to instances, creates jobs configurations and updates dns' do
         dns_binder = instance_double('Bosh::Director::DeploymentPlan::DnsBinder')
-        expect(DeploymentPlan::DnsBinder).to receive(:new).with(deployment).and_return(dns_binder)
+        expect(DeploymentPlan::DnsBinder).to receive(:new).with(deployment_plan).and_return(dns_binder)
         expect(dns_binder).to receive(:bind_deployment).with(no_args)
 
         vm_binder = instance_double('Bosh::Director::DeploymentPlan::InstanceVmBinder')
@@ -27,7 +27,7 @@ module Bosh::Director
         expect(job_renderer).to receive(:render_job_instances).with(no_args)
 
         job_updater = instance_double('Bosh::Director::JobUpdater')
-        expect(JobUpdater).to receive(:new).with(deployment, job, job_renderer).and_return(job_updater)
+        expect(JobUpdater).to receive(:new).with(deployment_plan, job, job_renderer).and_return(job_updater)
         expect(job_updater).to receive(:update).with(no_args)
 
         subject.update_instances
@@ -70,7 +70,7 @@ module Bosh::Director
       end
 
       it 'deletes all job instances' do
-        expect(InstanceDeleter).to receive(:new).with(deployment)
+        expect(InstanceDeleter).to receive(:new).with(deployment_plan)
         expect(instance_deleter).to receive(:delete_instances).
           with([instance1_model, instance2_model], event_log_stage)
 

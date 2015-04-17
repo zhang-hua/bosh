@@ -1,8 +1,8 @@
 require 'spec_helper'
 
 describe Bosh::Director::Errand::DeploymentPreparer do
-  subject { described_class.new(deployment, job, event_log, base_job) }
-  let(:deployment) { instance_double('Bosh::Director::DeploymentPlan::Planner') }
+  subject { described_class.new(deployment_plan, job, event_log, base_job) }
+  let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Plan') }
   let(:job)        { instance_double('Bosh::Director::DeploymentPlan::Job') }
   let(:event_log)  { instance_double('Bosh::Director::EventLog::Log') }
   let(:base_job)   { instance_double('Bosh::Director::Jobs::BaseJob') }
@@ -11,22 +11,22 @@ describe Bosh::Director::Errand::DeploymentPreparer do
     it 'binds deployment with all of its present resources' do
       assembler = instance_double('Bosh::Director::DeploymentPlan::Assembler')
       expect(Bosh::Director::DeploymentPlan::Assembler).to receive(:new).
-        with(deployment).
+        with(deployment_plan).
         and_return(assembler)
 
-      preparer = instance_double('Bosh::Director::DeploymentPlan::Preparer')
-      expect(Bosh::Director::DeploymentPlan::Preparer).to receive(:new).
+      prepare_step = instance_double('Bosh::Director::DeploymentPlan::PrepareStep')
+      expect(Bosh::Director::DeploymentPlan::PrepareStep).to receive(:new).
         with(base_job, assembler).
-        and_return(preparer)
+        and_return(prepare_step)
 
-      expect(preparer).to receive(:prepare).with(no_args)
+      expect(prepare_step).to receive(:perform).with(no_args)
 
-      compiler = instance_double('Bosh::Director::PackageCompiler')
-      expect(Bosh::Director::PackageCompiler).to receive(:new).
-        with(deployment).
-        and_return(compiler)
+      compile_step = instance_double('Bosh::Director::PackageCompileStep')
+      expect(Bosh::Director::PackageCompileStep).to receive(:new).
+        with(base_job, deployment_plan).
+        and_return(compile_step)
 
-      expect(compiler).to receive(:compile).with(no_args)
+      expect(compile_step).to receive(:perform).with(no_args)
 
       subject.prepare_deployment
     end

@@ -5,13 +5,13 @@ require File.expand_path("../../../spec_helper", __FILE__)
 describe Bosh::Director::DeploymentPlan::CompilationConfig do
   describe :initialize do
     before(:each) do
-      @deployment = instance_double('Bosh::Director::DeploymentPlan::Planner')
+      @deployment_plan = instance_double('Bosh::Director::DeploymentPlan::Plan')
       @network = instance_double('Bosh::Director::DeploymentPlan::Network')
-      allow(@deployment).to receive(:network).with("foo").and_return(@network)
+      allow(@deployment_plan).to receive(:network).with("foo").and_return(@network)
     end
 
     it "should parse the basic properties" do
-      config = BD::DeploymentPlan::CompilationConfig.new(@deployment, {
+      config = BD::DeploymentPlan::CompilationConfig.new(@deployment_plan, {
           "workers" => 2,
           "network" => "foo",
           "cloud_properties" => {
@@ -27,7 +27,7 @@ describe Bosh::Director::DeploymentPlan::CompilationConfig do
 
     it "should require workers to be specified" do
       expect {
-        BD::DeploymentPlan::CompilationConfig.new(@deployment, {
+        BD::DeploymentPlan::CompilationConfig.new(@deployment_plan, {
             "network" => "foo",
             "cloud_properties" => {
                 "foo" => "bar"
@@ -38,7 +38,7 @@ describe Bosh::Director::DeploymentPlan::CompilationConfig do
 
     it "should require there to be at least 1 worker" do
       expect {
-        BD::DeploymentPlan::CompilationConfig.new(@deployment, {
+        BD::DeploymentPlan::CompilationConfig.new(@deployment_plan, {
             "workers" => 0,
             "network" => "foo",
             "cloud_properties" => {
@@ -50,7 +50,7 @@ describe Bosh::Director::DeploymentPlan::CompilationConfig do
 
     it "should require a network to be specified" do
       expect {
-        BD::DeploymentPlan::CompilationConfig.new(@deployment, {
+        BD::DeploymentPlan::CompilationConfig.new(@deployment_plan, {
             "workers" => 1,
             "cloud_properties" => {
                 "foo" => "bar"
@@ -60,9 +60,9 @@ describe Bosh::Director::DeploymentPlan::CompilationConfig do
     end
 
     it "should require the specified network to exist" do
-      allow(@deployment).to receive(:network).with("bar").and_return(nil)
+      allow(@deployment_plan).to receive(:network).with("bar").and_return(nil)
       expect {
-        BD::DeploymentPlan::CompilationConfig.new(@deployment, {
+        BD::DeploymentPlan::CompilationConfig.new(@deployment_plan, {
             "workers" => 1,
             "network" => "bar",
             "cloud_properties" => {
@@ -74,7 +74,7 @@ describe Bosh::Director::DeploymentPlan::CompilationConfig do
 
     it "should require resource pool cloud properties" do
       expect {
-        BD::DeploymentPlan::CompilationConfig.new(@deployment, {
+        BD::DeploymentPlan::CompilationConfig.new(@deployment_plan, {
             "workers" => 1,
             "network" => "foo"
         })
@@ -82,7 +82,7 @@ describe Bosh::Director::DeploymentPlan::CompilationConfig do
     end
 
     it "should allow an optional environment to be set" do
-      config = BD::DeploymentPlan::CompilationConfig.new(@deployment, {
+      config = BD::DeploymentPlan::CompilationConfig.new(@deployment_plan, {
           "workers" => 1,
           "network" => "foo",
           "cloud_properties" => {
@@ -96,7 +96,7 @@ describe Bosh::Director::DeploymentPlan::CompilationConfig do
     end
 
     it "should allow reuse_compilation_vms to be set" do
-      config = BD::DeploymentPlan::CompilationConfig.new(@deployment, {
+      config = BD::DeploymentPlan::CompilationConfig.new(@deployment_plan, {
           "workers" => 1,
           "network" => "foo",
           "cloud_properties" => {
@@ -109,7 +109,7 @@ describe Bosh::Director::DeploymentPlan::CompilationConfig do
 
     it "should throw an error when a boolean property isnt boolean" do
       expect {
-        config = BD::DeploymentPlan::CompilationConfig.new(@deployment, {
+        config = BD::DeploymentPlan::CompilationConfig.new(@deployment_plan, {
             "workers" => 1,
             "network" => "foo",
             "cloud_properties" => {

@@ -4,18 +4,13 @@ module Bosh::Director
   module DeploymentPlan
     describe Assembler do
       subject(:assembler) { described_class.new(deployment_plan) }
-      let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Planner') }
+      let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Plan') }
 
       before { allow(App). to receive_message_chain(:instance, :blobstores, :blobstore).and_return(blobstore) }
       let(:blobstore) { instance_double('Bosh::Blobstore::Client') }
 
       before { allow(Config).to receive(:cloud).and_return(cloud) }
       let(:cloud) { instance_double('Bosh::Cloud') }
-
-      it 'should bind deployment' do
-        expect(deployment_plan).to receive(:bind_model)
-        assembler.bind_deployment
-      end
 
       it 'should bind releases' do
         r1 = instance_double('Bosh::Director::DeploymentPlan::ReleaseVersion')
@@ -180,7 +175,7 @@ module Bosh::Director
       end
 
       describe '#bind_idle_vm' do
-        let(:deployment_plan) { Planner.new('fake-deployment') }
+        let(:deployment_plan) { Plan.from_manifest(ManifestHelper::default_legacy_manifest('fake-deployment')) }
         let(:state) { { 'state' => 'foo' } }
         let(:network) { Network.new(deployment_plan, {'name' => resource_pool_manifest['network']}) }
         let(:resource_pool) { ResourcePool.new(deployment_plan, resource_pool_manifest, logger) }

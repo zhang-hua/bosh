@@ -32,6 +32,42 @@ module Bosh::Spec
           'update_watch_time' => 20
         }
       }
+      end
+
+    def self.minimal_cloud_config
+      {
+        'networks' => [{
+            'name' => 'a',
+            'subnets' => [],
+          }],
+
+        'compilation' => {
+          'workers' => 1,
+          'network' => 'a',
+          'cloud_properties' => {},
+        },
+
+        'resource_pools' => [],
+    }
+    end
+
+    def self.minimal_manifest_without_cloud_config
+      {
+        'name' => 'minimal',
+        'director_uuid'  => 'deadbeef',
+
+        'releases' => [{
+          'name'    => 'appcloud',
+          'version' => '0.1' # It's our dummy valid release from spec/assets/valid_release.tgz
+        }],
+
+        'update' => {
+          'canaries'          => 2,
+          'canary_watch_time' => 4000,
+          'max_in_flight'     => 1,
+          'update_watch_time' => 20
+        }
+      }
     end
 
     def self.test_release_manifest

@@ -1,13 +1,13 @@
 require 'bosh/director/compile_task_generator'
 
 module Bosh::Director
-  class PackageCompiler
+  class PackageCompileStep
     include LockHelper
 
     attr_reader :compilations_performed
 
-    # @param [DeploymentPlan] deployment_plan Deployment plan
-    def initialize(deployment_plan)
+    def initialize(base_job, deployment_plan)
+      @base_job = base_job
       @deployment_plan = deployment_plan
 
       @cloud = Config.cloud
@@ -34,20 +34,16 @@ module Bosh::Director
       @compilations_performed = 0
     end
 
-    # @return [Integer] How many compile tasks are present
     def compile_tasks_count
       @compile_tasks.size
     end
 
-    # @return [Integer] How many compile tasks are ready
     def ready_tasks_count
       @tasks_mutex.synchronize { @ready_tasks.size }
     end
 
-    # Generates compilation tasks for all packages in all job templates included
-    # in the current deployment and kicks off compilation.
-    # @return [void]
-    def compile
+    def perform
+      @logger.info('Compiling and binding packages')
       @logger.info('Generating a list of compile tasks')
       prepare_tasks
 

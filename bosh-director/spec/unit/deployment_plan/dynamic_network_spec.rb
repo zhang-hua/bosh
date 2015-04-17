@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe Bosh::Director::DeploymentPlan::DynamicNetwork do
   before(:each) do
-    @deployment_plan = instance_double('Bosh::Director::DeploymentPlan::Planner')
+    @deployment_plan = instance_double('Bosh::Director::DeploymentPlan::Plan')
   end
 
   describe :initialize do

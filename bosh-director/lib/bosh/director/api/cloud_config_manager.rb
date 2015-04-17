@@ -2,19 +2,19 @@ module Bosh
   module Director
     module Api
       class CloudConfigManager
-        def update(cloud_config_yaml)
-          cloud_config = Bosh::Director::Models::CloudConfig.new(
-            properties: cloud_config_yaml
+        def update(iaas_config_yaml)
+          iaas_config = Bosh::Director::Models::IaasConfig.new(
+            properties: iaas_config_yaml
           )
-          cloud_config.save
+          iaas_config.save
         end
 
         def list(limit)
-          Bosh::Director::Models::CloudConfig.order(Sequel.desc(:id)).limit(limit).to_a
+          Bosh::Director::Models::IaasConfig.list(limit)
         end
 
         def latest
-          list(1).first
+          Bosh::Director::Models::IaasConfig.latest
         end
       end
     end

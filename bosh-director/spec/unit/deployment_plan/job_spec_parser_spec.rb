@@ -7,7 +7,7 @@ describe Bosh::Director::DeploymentPlan::JobSpecParser do
 
   let(:deployment_plan) do
     instance_double(
-      'Bosh::Director::DeploymentPlan::Planner',
+      'Bosh::Director::DeploymentPlan::Plan',
       model: Bosh::Director::Models::Deployment.make,
       properties: {},
       update: nil,

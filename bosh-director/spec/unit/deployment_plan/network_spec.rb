@@ -2,7 +2,7 @@ require 'spec_helper'
 
 module Bosh::Director::DeploymentPlan
   describe Network do
-    let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Planner') }
+    let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Plan') }
 
     describe :reserve! do
       let(:network) do

@@ -61,9 +61,8 @@ module Bosh::Director
         @cloud = nil
       end
 
-      def configure(config)
+        def configure(config)
         @max_vm_create_tries = Integer(config.fetch('max_vm_create_tries', 5))
-
         @base_dir = config['dir']
         FileUtils.mkdir_p(@base_dir)
 
@@ -268,7 +267,7 @@ module Bosh::Director
       end
 
       def dns_enabled?
-        !@dns_db.nil?
+        !!(dns && dns_db)
       end
 
       def encryption?
