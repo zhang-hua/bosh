@@ -17,9 +17,9 @@ module Bosh::Director
         with_deployment_lock(deployment_plan) do
           logger.info('Updating deployment')
           notifier.send_start_event
-          prepare
-          compile
-          update
+          prepare_step.perform
+          compile_step.perform
+          update_step.perform
           notifier.send_end_event
           logger.info('Finished updating deployment')
 
@@ -32,25 +32,24 @@ module Bosh::Director
         FileUtils.rm_rf(@manifest_file_path)
       end
 
+      private
+
       # Job tasks
 
-      def prepare
-        prepare_step = DeploymentPlan::Preparer.new(self, assembler)
-        prepare_step.prepare
+      def prepare_step
+        DeploymentPlan::Steps::PrepareStep.new(self, assembler)
       end
 
-      def compile
-        compile_step = PackageCompiler.new(self, deployment_plan)
-        compile_step.compile
+      def compile_step
+        DeploymentPlan::Steps::PackageCompileStep.new(self, deployment_plan)
       end
 
-      def update
+      def update_step
         resource_pool_updaters = deployment_plan.resource_pools.map do |resource_pool|
           ResourcePoolUpdater.new(resource_pool)
         end
         resource_pools = DeploymentPlan::ResourcePools.new(event_log, resource_pool_updaters)
-        update_step = DeploymentPlan::Updater.new(self, event_log, resource_pools, assembler, deployment_plan, deployment_plan.model, multi_job_updater)
-        update_step.update
+        DeploymentPlan::Steps::UpdateStep.new(self, event_log, resource_pools, assembler, deployment_plan, deployment_plan.model, multi_job_updater)
       end
 
       # Job dependencies
