@@ -5,10 +5,12 @@ set -x
 
 # run mysql as root (NOPASSWD recommended)
 echo "Starting MySQL..."
-sudo /etc/init.d/mysql start
+#sudo /etc/init.d/mysql start
+sudo service mysql start
 
 echo "Starting PostgreSQL..."
-pg_ctl start -l /var/log/postgresql/server.log
+#pg_ctl start -l /var/log/postgresql/server.log
+sudo service postgresql start
 
 [ -d /opt/bosh ] && sudo chown -R ubuntu:ubuntu /opt/bosh
 
