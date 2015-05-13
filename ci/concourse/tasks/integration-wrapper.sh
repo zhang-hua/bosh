@@ -14,9 +14,10 @@ case "$DB" in
     export PGLOGS=/tmp/log/postgres
     mkdir -p $PGDATA
     mkdir -p $PGLOGS
-    initdb -U postgres -D $PGDATA
+    su - vcap -c "initdb -U postgres -D $PGDATA"
 
-    pg_ctl start -l $PGLOGS/server.log
+    # pg_ctl start -l $PGLOGS/server.log
+    sudo service postgresql start
     ;;
   *)
     echo $"Usage: $0 {mysql|postgresql}"
@@ -33,7 +34,8 @@ case "$DB" in
     sudo service mysql stop
     ;;
   postgresql)
-    pg_ctl stop
+    # pg_ctl stop
+    sudo service postgresql start
     ;;
 esac
 
