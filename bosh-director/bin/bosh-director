@@ -34,4 +34,7 @@ end
 end
 
 Bosh::Director::Config.logger.info("Listening on port #{config.port}")
+
+Bosh::Director::Config.redis.set 'a-static', ''
+Bosh::Director::Config.redis.set 'a-dynamic', ''
 thin_server.start!

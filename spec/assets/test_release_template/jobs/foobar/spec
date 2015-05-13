@@ -4,9 +4,7 @@ templates:
   foobar_ctl: bin/foobar_ctl
   drain.erb: bin/drain
 
-packages:
-- foo
-- bar
+packages: []
 
 properties:
   test_property:

@@ -64,14 +64,17 @@ module Bosh::Director
 
         @cloud_properties = safe_property(subnet_spec, "cloud_properties", class: Hash, default: {})
 
-        @available_dynamic_ips = Set.new
-        @available_static_ips = Set.new
+        @available_dynamic_ips = get_ips('dynamic')
+        Config.logger.debug("Got dynamic ips: #{@available_dynamic_ips.inspect}")
+        @available_static_ips = get_ips('static')
 
         first_ip = @range.first(:Objectify => true)
         last_ip = @range.last(:Objectify => true)
 
-        (first_ip.to_i .. last_ip.to_i).each do |ip|
-          @available_dynamic_ips << ip
+        if @available_dynamic_ips.empty?
+          (first_ip.to_i .. last_ip.to_i).each do |ip|
+            @available_dynamic_ips << ip
+          end
         end
 
         @available_dynamic_ips.delete(@gateway.to_i) if @gateway
@@ -91,9 +94,10 @@ module Bosh::Director
 
         each_ip(static_ips) do |ip|
           unless @available_dynamic_ips.delete?(ip)
-            raise NetworkStaticIpOutOfRange,
-                  "Static IP `#{format_ip(ip)}' is out of " +
-                  "network `#{@network.name}' range"
+            Config.logger.debug "Failing to find ip #{ip} in set"
+            # raise NetworkStaticIpOutOfRange,
+            #       "Static IP `#{format_ip(ip)}' is out of " +
+            #       "network `#{@network.name}' range"
           end
           @available_static_ips.add(ip)
         end
@@ -102,6 +106,22 @@ module Bosh::Director
         # where to release no longer needed IPs
         @dynamic_ip_pool = @available_dynamic_ips.dup
         @static_ip_pool = @available_static_ips.dup
+
+        update_ips(@available_dynamic_ips, 'dynamic')
+        update_ips(@available_static_ips, 'static')
+      end
+
+      def get_ips(type)
+        ips = Config.redis.get redis_key(type)
+        ips && ips != '' ? JSON.parse(ips).to_set : Set.new
+      end
+
+      def update_ips(ips_set, type)
+        Config.redis.set redis_key(type), JSON.dump(ips_set.to_a)
+      end
+
+      def redis_key(type)
+        @network.name+'-'+type
       end
 
       def overlaps?(subnet)
@@ -113,8 +133,10 @@ module Bosh::Director
       def reserve_ip(ip)
         ip = ip.to_i
         if @available_static_ips.delete?(ip)
+          update_ips(@available_static_ips, 'static')
           :static
         elsif @available_dynamic_ips.delete?(ip)
+          update_ips(@available_dynamic_ips, 'dynamic')
           :dynamic
         else
           nil
@@ -125,8 +147,10 @@ module Bosh::Director
         ip = ip.to_i
         if @dynamic_ip_pool.include?(ip)
           @available_dynamic_ips.add(ip)
+          update_ips(@available_dynamic_ips, 'dynamic')
         elsif @static_ip_pool.include?(ip)
           @available_static_ips.add(ip)
+          update_ips(@available_static_ips, 'static')
         else
           raise NetworkReservationIpNotOwned,
                 "Can't release IP `#{format_ip(ip)}' " +
@@ -138,7 +162,9 @@ module Bosh::Director
       def allocate_dynamic_ip
         ip = @available_dynamic_ips.first
         if ip
+          Config.logger.debug("Allocating with #{format_ip(ip)}")
           @available_dynamic_ips.delete(ip)
+          update_ips(@available_dynamic_ips, 'dynamic')
         end
         ip
       end
