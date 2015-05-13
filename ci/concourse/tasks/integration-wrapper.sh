@@ -14,7 +14,8 @@ case "$DB" in
     export PGLOGS=/tmp/log/postgres
     mkdir -p $PGDATA
     mkdir -p $PGLOGS
-    su - vcap -c "initdb -U postgres -D $PGDATA"
+    # NOTE: using double quotes intentionally to pass through root-owned ENV.
+    su - vcap -c "PATH=$PATH; initdb -U postgres -D $PGDATA"
 
     # pg_ctl start -l $PGLOGS/server.log
     sudo service postgresql start
