@@ -55,10 +55,8 @@ module Bosh::Director
       agent.wait_until_ready
       agent.update_settings(Config.trusted_certs)
 
-      update_state(agent, vm_model, vm)
-
-      vm.model = vm_model
-      vm.bound_instance.current_state = agent.get_state
+      vm.bound_instance.bind_to_vm_model(vm_model)
+      vm.bound_instance.apply_vm_state
     rescue Exception => e
       @logger.info("Cleaning up the created VM due to an error: #{e}")
       begin
@@ -68,17 +66,6 @@ module Bosh::Director
         @logger.info("Could not cleanup VM: #{vm_model.cid}") if vm_model
       end
       raise e
-    end
-
-    def update_state(agent, vm_model, vm)
-      state = {
-          "deployment" => @resource_pool.deployment_plan.name,
-          "resource_pool" => @resource_pool.spec,
-          "networks" => vm.bound_instance.network_settings
-      }
-
-      vm_model.update(:apply_spec => state)
-      agent.apply(state)
     end
 
     def generate_agent_id
