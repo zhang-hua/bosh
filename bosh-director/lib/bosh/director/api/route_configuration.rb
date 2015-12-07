@@ -11,6 +11,7 @@ module Bosh
           director_app = Bosh::Director::App.new(@config)
           controllers = {}
           controllers['/backups'] = Bosh::Director::Api::Controllers::BackupsController.new(@config)
+          controllers['/restore'] = Bosh::Director::Api::Controllers::RestoreController.new(@config)
           controllers['/cloud_configs'] = Bosh::Director::Api::Controllers::CloudConfigsController.new(@config)
           controllers['/deployments'] = Bosh::Director::Api::Controllers::DeploymentsController.new(@config)
           controllers['/info'] = Bosh::Director::Api::Controllers::InfoController.new(@config)

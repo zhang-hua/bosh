@@ -553,6 +553,13 @@ module Bosh
           path
         end
 
+        def create_restore(filename, options = {})
+          options                = options.dup
+          options[:content_type] = 'application/x-compressed'
+
+          upload_and_track(:post, '/restore', filename, options)
+        end
+
         def list_locks
           get_json('/locks')
         end
